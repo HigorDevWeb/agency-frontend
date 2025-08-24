@@ -11,6 +11,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { getInsideJobById } from "@/services/jobsService";
+import ApplyModal from "@/components/ApplyModal";
 
 import type { InsideCardJob } from "@/lib/getJobListing/getJobListingPage";
 
@@ -22,6 +23,7 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<InsideCardJob | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showApplyModal, setShowApplyModal] = useState(false);
 
   useEffect(() => {
     async function fetchJob() {
@@ -52,11 +54,12 @@ export default function JobDetailPage() {
     fetchJob();
   }, [params.id]);
 
-  const handleApply = async () => {
-    setIsApplying(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setHasApplied(true);
-    setIsApplying(false);
+  const handleApply = () => {
+    setShowApplyModal(true);
+  };
+
+  const handleCloseApplyModal = () => {
+    setShowApplyModal(false);
   };
 
   // Loading state
@@ -159,24 +162,9 @@ export default function JobDetailPage() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleApply}
-                disabled={isApplying || hasApplied}
-                className={`px-8 py-3 rounded-lg font-semibold text-lg transition-all duration-300 ${hasApplied
-                    ? "bg-green-600 text-white"
-                    : isApplying
-                      ? "bg-gray-600 text-gray-300 cursor-not-allowed"
-                      : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
-                  }`}
+                className="px-8 py-3 rounded-lg font-semibold text-lg transition-all duration-300 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
               >
-                {hasApplied ? (
-                  <div className="flex items-center gap-2">
-                    <CheckCircle size={20} />
-                    Candidatura Enviada
-                  </div>
-                ) : isApplying ? (
-                  "Enviando..."
-                ) : (
-                  job.applyButton || "Candidatar-se"
-                )}
+                {job.applyButton || "Candidatar-se"}
               </motion.button>
             </div>
           </div>
@@ -247,7 +235,18 @@ export default function JobDetailPage() {
             </div>
           </div>
         </motion.div>
+        {showApplyModal && job && (
+          <ApplyModal
+            open={showApplyModal}
+            onClose={handleCloseApplyModal}
+            job={{
+              id: job.id,
+              title: job.JobTitle,
+              ...Object.fromEntries(Object.entries(job))
+            }}
+          />
+        )}
       </div>
-    </div>
+  </div>
   );
 }
