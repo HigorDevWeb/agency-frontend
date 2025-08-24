@@ -24,7 +24,7 @@ export interface HeaderInfo {
 export const getHeaderInfo = async (): Promise<HeaderInfo | null> => {
     try {
         const res = await fetch(
-            `http://localhost:1337/api/header-info?populate=*`,
+            `https://api.recruitings.info/api/header-info?populate=*`,
             {
                 headers: { "Content-Type": "application/json" },
                 cache: "no-store", // ou 'force-cache' se preferir SSR

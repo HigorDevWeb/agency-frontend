@@ -52,7 +52,7 @@ export interface JobListingPage {
 
 export async function getJobListingPage(): Promise<JobListingPage | null> {
     try {
-        const res = await fetch("http://localhost:1337/api/job-listing-page?populate=*", {
+        const res = await fetch("https://api.recruitings.info/api/job-listing-page?populate=*", {
             // Se usar Next.js, ajuste cache/revalidate como preferir
             next: { revalidate: 60 },
         });
