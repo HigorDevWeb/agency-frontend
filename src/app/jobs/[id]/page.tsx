@@ -8,7 +8,6 @@ import {
   MapPin,
   Users,
   Calendar,
-  CheckCircle,
 } from "lucide-react";
 import { getInsideJobById } from "@/services/jobsService";
 import ApplyModal from "@/components/ApplyModal";
@@ -18,8 +17,7 @@ import type { InsideCardJob } from "@/lib/getJobListing/getJobListingPage";
 export default function JobDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const [isApplying, setIsApplying] = useState(false);
-  const [hasApplied, setHasApplied] = useState(false);
+  // ...existing code...
   const [job, setJob] = useState<InsideCardJob | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
