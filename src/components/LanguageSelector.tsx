@@ -6,8 +6,10 @@ import { useLanguage, Language } from "@/context/LanguageContext";
 
 const languages = [
   { code: 'pt', name: 'Português', flag: '🇧🇷' },
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
+  { code: 'en', name: 'Inglês', flag: '🇺🇸' },
+  { code: 'es', name: 'Espanhol', flag: '🇪🇸' },
+  { code: 'ru', name: 'Russo', flag: '🇷🇺' },
+  { code: 'uk', name: 'Ucraniano', flag: '🇺🇦' },
 ] as const;
 
 export default function LanguageSelector() {
