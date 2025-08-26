@@ -6,28 +6,59 @@ import { useRouter } from "next/navigation";
 import { getAllJobs } from "@/services/jobsService";
 import type { FrontCardJob } from "@/lib/getJobListing/getJobListingPage";
 import { useLanguage } from "@/context/LanguageContext";
+import { getJobListingPage } from "@/lib/getJobListing/getJobListingPage";
 
 export default function JobsSection() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: false });
   const router = useRouter();
-  const { t } = useLanguage();
+  const { language } = useLanguage();
 
   const [jobs, setJobs] = useState<FrontCardJob[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Estados para os textos da seção
+  const [sectionTexts, setSectionTexts] = useState({
+    featuredJobs: 'Vagas em Destaque',
+    opportunities: 'Oportunidades selecionadas para você',
+    seeDetails: 'Ver Detalhes',
+    seeAllJobs: 'Ver Todas as Vagas'
+  });
+
+  // Buscar textos localizados da API com base no idioma atual
+  useEffect(() => {
+    const fetchLocalizedTexts = async () => {
+      try {
+        const data = await getJobListingPage(language);
+        
+        if (data) {
+          setSectionTexts({
+            featuredJobs: data.featured_title || 'Vagas em Destaque',
+            opportunities: data.featured_subtitle || 'Oportunidades selecionadas para você',
+            seeDetails: data.frontCardJob?.[0]?.seeMoreButton || 'Ver Detalhes',
+            seeAllJobs: data.seeAllJobsButton || 'Ver Todas as Vagas'
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao buscar textos localizados:', error);
+      }
+    };
+    
+    fetchLocalizedTexts();
+  }, [language]);
 
   // Busca somente as 3 primeiras vagas do backend!
   useEffect(() => {
     let isMounted = true;
     (async () => {
-      const data = await getAllJobs();
+      const data = await getAllJobs(language);
       if (isMounted && data) {
         setJobs(data.slice(0, 3));
         setLoading(false);
       }
     })();
     return () => { isMounted = false; };
-  }, []);
+  }, [language]);
 
   return (
     <section ref={ref} className="py-20 px-4">
@@ -39,10 +70,10 @@ export default function JobsSection() {
       >
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
-            {t('jobs.featured_jobs')}
+            {sectionTexts.featuredJobs}
           </h2>
           <p className="text-xl text-gray-300">
-            {t('jobs.opportunities')}
+            {sectionTexts.opportunities}
           </p>
         </div>
 
@@ -142,7 +173,7 @@ export default function JobsSection() {
                   }}
                   className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg text-white font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300"
                 >
-                  {t('jobs.see_details')}
+                  {sectionTexts.seeDetails}
                 </motion.button>
               </motion.div>
             ))
@@ -158,7 +189,7 @@ export default function JobsSection() {
             onClick={() => router.push("/jobs")}
             className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white font-semibold text-lg"
           >
-            {t('jobs.see_all_jobs')}
+            {sectionTexts.seeAllJobs}
           </motion.button>
         </div>
       </motion.div>

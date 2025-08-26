@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { getGlobal } from "@/lib/global/global";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface FooterStats {
   id: number;
@@ -10,9 +11,10 @@ interface FooterStats {
   label: string;
 }
 
-interface FooterLinksGroup {
+interface FooterLink {
   id: number;
-  groupTitle: string;
+  label: string;
+  url: string | null;
 }
 
 interface GlobalData {
@@ -26,7 +28,11 @@ interface GlobalData {
   developerName: string | null;
   developerUrl: string | null;
   footerStats: FooterStats[];
-  footerLinksGroups: FooterLinksGroup[];
+  footerLinksGroups: Array<{
+    id: number;
+    groupTitle: string;
+    footerLinksGroup?: FooterLink[];
+  }>;
   footerSocialLinks: Array<{
     name?: string;
     icon?: string;
@@ -36,13 +42,16 @@ interface GlobalData {
 }
 
 export default function Footer() {
+  const { language } = useLanguage();
   const [globalData, setGlobalData] = useState<GlobalData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchGlobalData = async () => {
       try {
-        const data = await getGlobal();
+        setLoading(true);
+        // Passa o idioma atual para a função getGlobal
+        const data = await getGlobal(language);
         setGlobalData(data);
       } catch (error) {
         console.error("Erro ao buscar dados globais:", error);
@@ -52,7 +61,8 @@ export default function Footer() {
     };
 
     fetchGlobalData();
-  }, []);
+    // Refetcha dados quando o idioma mudar
+  }, [language]);
 
   // Dados de fallback para redes sociais caso não haja dados da API
   const fallbackSocialLinks = [
@@ -100,13 +110,23 @@ export default function Footer() {
     Suporte: ["Central de Ajuda", "Contato", "Termos de Uso", "Privacidade"],
   };
 
-  // Função para obter ícone baseado no label
+  // Função para obter ícone baseado no label, com suporte a múltiplos idiomas
   const getIconForLabel = (label: string) => {
     const iconMap: { [key: string]: string } = {
+      // Português
       "Vagas Ativas": "💼",
       "Desenvolvedores": "👨‍💻",
       "Empresas Parceiras": "🏢",
       "Contratações": "🤝",
+      
+      // Inglês
+      "Active Offers": "💼",
+      "Developers": "👨‍💻",
+      "Empresas Asociadas": "🏢", // Espanhol
+      "Partner Companies": "🏢",
+      "Hiring": "🤝",
+      
+      // Outros idiomas podem ser adicionados aqui
     };
     return iconMap[label] || "📊";
   };
@@ -203,7 +223,7 @@ export default function Footer() {
             </p>
 
             <div className="flex space-x-4">
-              {(globalData.footerSocialLinks.length > 0 
+              {((globalData.footerSocialLinks && globalData.footerSocialLinks.length > 0)
                 ? globalData.footerSocialLinks 
                 : fallbackSocialLinks
               ).map((social, index) => (
@@ -229,8 +249,10 @@ export default function Footer() {
           </motion.div>
 
           {globalData.footerLinksGroups.map((group, categoryIndex) => {
+            // Verificar se temos links do grupo na API ou usar fallback
+            const hasApiLinks = group.footerLinksGroup && group.footerLinksGroup.length > 0;
             // Usar dados de fallback para os links se não houver dados específicos
-            const groupLinks = fallbackFooterLinks[group.groupTitle as keyof typeof fallbackFooterLinks] || [];
+            const fallbackLinks = fallbackFooterLinks[group.groupTitle as keyof typeof fallbackFooterLinks] || [];
             
             return (
               <motion.div
@@ -242,25 +264,49 @@ export default function Footer() {
               >
                 <h3 className="text-white font-semibold mb-4">{group.groupTitle}</h3>
                 <ul className="space-y-2">
-                  {groupLinks.map((link, linkIndex) => (
-                    <motion.li
-                      key={link}
-                      initial={{ opacity: 0, x: -10 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      transition={{
-                        delay: categoryIndex * 0.1 + linkIndex * 0.05,
-                      }}
-                      viewport={{ once: true }}
-                    >
-                      <motion.a
-                        href="#"
-                        whileHover={{ x: 5, color: "#60a5fa" }}
-                        className="text-gray-400 hover:text-blue-400 transition-all duration-200 text-sm"
+                  {hasApiLinks ? (
+                    // Renderizar links da API
+                    group.footerLinksGroup!.map((link, linkIndex) => (
+                      <motion.li
+                        key={link.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{
+                          delay: categoryIndex * 0.1 + linkIndex * 0.05,
+                        }}
+                        viewport={{ once: true }}
                       >
-                        {link}
-                      </motion.a>
-                    </motion.li>
-                  ))}
+                        <motion.a
+                          href={link.url || "#"}
+                          whileHover={{ x: 5, color: "#60a5fa" }}
+                          className="text-gray-400 hover:text-blue-400 transition-all duration-200 text-sm"
+                        >
+                          {link.label}
+                        </motion.a>
+                      </motion.li>
+                    ))
+                  ) : (
+                    // Renderizar links de fallback
+                    fallbackLinks.map((link, linkIndex) => (
+                      <motion.li
+                        key={link}
+                        initial={{ opacity: 0, x: -10 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        transition={{
+                          delay: categoryIndex * 0.1 + linkIndex * 0.05,
+                        }}
+                        viewport={{ once: true }}
+                      >
+                        <motion.a
+                          href="#"
+                          whileHover={{ x: 5, color: "#60a5fa" }}
+                          className="text-gray-400 hover:text-blue-400 transition-all duration-200 text-sm"
+                        >
+                          {link}
+                        </motion.a>
+                      </motion.li>
+                    ))
+                  )}
                 </ul>
               </motion.div>
             );

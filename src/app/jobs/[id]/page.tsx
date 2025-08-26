@@ -11,22 +11,39 @@ import {
 } from "lucide-react";
 import { getInsideJobById } from "@/services/jobsService";
 import ApplyModal from "@/components/ApplyModal";
+import { useLanguage } from "@/context/LanguageContext";
 
 import type { InsideCardJob } from "@/lib/getJobListing/getJobListingPage";
 
 export default function JobDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { language } = useLanguage();
   // ...existing code...
   const [job, setJob] = useState<InsideCardJob | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showApplyModal, setShowApplyModal] = useState(false);
+  
+  // Estado para os textos traduzidos
+  const [pageTexts] = useState({
+    backButton: "Voltar",
+    loading: "Carregando detalhes da vaga...",
+    jobNotFound: "Vaga não encontrada",
+    jobNotFoundDesc: "A vaga que você está procurando não foi encontrada ou não existe.",
+    backToJobs: "Voltar às Vagas",
+    description: "Descrição",
+    aboutCompany: "Sobre a Empresa",
+    requirements: "Requisitos",
+    benefits: "Benefícios",
+    idNotProvided: "ID da vaga não fornecido",
+    errorLoading: "Erro ao carregar detalhes da vaga"
+  });
 
   useEffect(() => {
     async function fetchJob() {
       if (!params.id) {
-        setError("ID da vaga não fornecido");
+        setError(pageTexts.idNotProvided);
         setLoading(false);
         return;
       }
@@ -34,23 +51,24 @@ export default function JobDetailPage() {
       try {
         setLoading(true);
         setError(null);
-        const data = await getInsideJobById(Number(params.id));
+        // Passa o locale atual para buscar a vaga com o ID correto nesse idioma
+        const data = await getInsideJobById(Number(params.id), language);
         
         if (!data) {
-          setError("Vaga não encontrada");
+          setError(pageTexts.jobNotFound);
         } else {
           setJob(data);
         }
       } catch (err) {
         console.error("Erro ao buscar vaga:", err);
-        setError("Erro ao carregar detalhes da vaga");
+        setError(pageTexts.errorLoading);
       } finally {
         setLoading(false);
       }
     }
     
     fetchJob();
-  }, [params.id]);
+  }, [params.id, language, pageTexts.idNotProvided, pageTexts.jobNotFound, pageTexts.errorLoading]);
 
   const handleApply = () => {
     setShowApplyModal(true);
@@ -66,7 +84,7 @@ export default function JobDetailPage() {
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Carregando detalhes da vaga...</p>
+          <p className="text-gray-400">{pageTexts.loading}</p>
         </div>
       </div>
     );
@@ -78,16 +96,16 @@ export default function JobDetailPage() {
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-4 text-red-400">
-            {error || "Vaga não encontrada"}
+            {error || pageTexts.jobNotFound}
           </h1>
           <p className="text-gray-400 mb-6">
-            A vaga que você está procurando não foi encontrada ou não existe.
+            {pageTexts.jobNotFoundDesc}
           </p>
           <button
             onClick={() => router.push("/jobs")}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
           >
-            Voltar às Vagas
+            {pageTexts.backToJobs}
           </button>
         </div>
       </div>
@@ -111,7 +129,7 @@ export default function JobDetailPage() {
           className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-8"
         >
           <ArrowLeft size={20} />
-          Voltar
+          {pageTexts.backButton}
         </motion.button>
 
         <motion.div
@@ -170,13 +188,13 @@ export default function JobDetailPage() {
           <div className="grid gap-8 md:grid-cols-2">
             <div>
               <h3 className="text-2xl font-bold mb-4 text-blue-400">
-                Descrição
+                {pageTexts.description}
               </h3>
               <p className="text-gray-300 leading-relaxed">{job.JobDescription}</p>
             </div>
             <div>
               <h3 className="text-2xl font-bold mb-4 text-blue-400">
-                Sobre a Empresa
+                {pageTexts.aboutCompany}
               </h3>
               <div className="space-y-2 text-gray-300">
                 <div className="flex items-center gap-2">
@@ -197,7 +215,7 @@ export default function JobDetailPage() {
           <div className="mt-8 grid gap-8 md:grid-cols-2">
             <div>
               <h3 className="text-2xl font-bold mb-4 text-green-400">
-                Requisitos
+                {pageTexts.requirements}
               </h3>
               <ul className="space-y-2">
                 {(job.jobRequirements?.split("\n").filter((line) => !!line) ?? []).map(
@@ -215,7 +233,7 @@ export default function JobDetailPage() {
             </div>
             <div>
               <h3 className="text-2xl font-bold mb-4 text-purple-400">
-                Benefícios
+                {pageTexts.benefits}
               </h3>
               <ul className="space-y-2">
                 {(job.jobbenefits?.split("\n").filter((line) => !!line) ?? []).map(

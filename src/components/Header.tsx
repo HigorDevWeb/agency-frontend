@@ -9,13 +9,14 @@ import UserProfileDropdown from "./user/UserProfileDropDown";
 import LanguageSelector from "./LanguageSelector";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { getHeaderInfo, HeaderMenuItem } from "@/lib/header-info/getHeaderInfo";
+import { getHeaderInfo, HeaderInfo } from "@/lib/header-info/getHeaderInfo";
 
 export default function Header() {
   const { user, logout } = useAuth();
-  const { t } = useLanguage();
+  const { language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [headerData, setHeaderData] = useState<HeaderInfo | null>(null);
   const [authModal, setAuthModal] = useState<{
     isOpen: boolean;
     type: "login" | "register";
@@ -24,13 +25,10 @@ export default function Header() {
     type: "login",
   });
 
-  // **Estado para o menu dinâmico**
-  const [menuItems, setMenuItems] = useState<HeaderMenuItem[]>([]);
-
   const { scrollY } = useScroll();
   const opacity = useTransform(scrollY, [0, 100], [0.9, 1]);
 
-  // Scroll header
+  // Effect to handle scroll state
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
@@ -39,17 +37,15 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Fetch do menu no Strapi
+  // Effect to fetch header data from Strapi based on the current language
   useEffect(() => {
-    async function loadMenu() {
-      const header = await getHeaderInfo(); // sem locale
-      if (header?.menu) {
-        // filtra apenas links com href e mantém ordem original
-        setMenuItems(header.menu.filter(item => item.href !== null));
-      }
+    async function loadHeaderData() {
+      setHeaderData(null); // Reset data to show loading state on language change
+      const data = await getHeaderInfo(language);
+      setHeaderData(data);
     }
-    loadMenu();
-  }, []);
+    loadHeaderData();
+  }, [language]);
 
   const openAuthModal = (type: "login" | "register") => {
     setAuthModal({ isOpen: true, type });
@@ -66,6 +62,45 @@ export default function Header() {
       type: prev.type === "login" ? "register" : "login",
     }));
   };
+
+  // Derive menu items and button texts from headerData state
+  const menuItems = headerData?.menu?.filter(item => item.href !== null) || [];
+  
+  const loginButtonText = headerData?.menu?.find(item => 
+    item.href === null && (item.label.toLowerCase().trim().includes('login') || item.label.toLowerCase().trim().includes('entrar'))
+  )?.label;
+
+  const registerButtonText = headerData?.menu?.find(item => 
+    item.href === null && (item.label.toLowerCase().trim().includes('sign') || item.label.toLowerCase().trim().includes('cadastr') || item.label.toLowerCase().trim().includes('regist'))
+  )?.label;
+
+  const profileButtonText = headerData?.profileButtonText;
+  const logoutButtonText = headerData?.logoutButtonText;
+
+  // Render a skeleton header while data is loading to prevent UI from disappearing
+  if (!headerData) {
+    return (
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-black/80 backdrop-blur-lg border-b border-gray-800`}>
+           <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between items-center h-16">
+                  <div className="flex items-center space-x-2">
+                      <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                          className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center"
+                        >
+                          <span className="text-white font-bold text-xl">⚡</span>
+                        </motion.div>
+                      <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">DevJobs</span>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                      <LanguageSelector />
+                  </div>
+              </div>
+          </nav>
+      </header>
+    );
+  }
 
   return (
     <>
@@ -92,14 +127,14 @@ export default function Header() {
               </motion.div>
               <motion.span
                 whileHover={{ scale: 1.05 }}
-                className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent cursor-pointer"
+                className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent cursor-pointer logo-label"
                 onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               >
-                DevJobs
+                {headerData.logoLabel || 'DevJobs'}
               </motion.span>
             </motion.div>
 
-            {/* Menu Desktop */}
+            {/* Desktop Menu */}
             <div className="hidden md:block">
               <div className="flex items-center space-x-8">
                 {menuItems.map((item, index) => (
@@ -128,52 +163,54 @@ export default function Header() {
               </div>
             </div>
 
-            {/* Botões de login/cadastrar e seletor de idioma */}
+            {/* Auth buttons and language selector */}
             <div className="hidden md:flex items-center space-x-4">
-              {/* Seletor de Idioma */}
               <LanguageSelector />
               
               {user ? (
                 <UserProfileDropdown />
               ) : (
                 <>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => openAuthModal("login")}
-                    className="text-gray-300 hover:text-white px-4 py-2 text-sm font-medium transition-colors relative overflow-hidden group"
-                  >
-                    <span className="relative z-10">{t('header.login')}</span>
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                      whileHover={{ scale: 1.1 }}
-                    />
-                  </motion.button>
+                  {loginButtonText && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => openAuthModal("login")}
+                      className="text-gray-300 hover:text-white px-4 py-2 text-sm font-medium transition-colors relative overflow-hidden group"
+                    >
+                      <span className="relative z-10">{loginButtonText}</span>
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        whileHover={{ scale: 1.1 }}
+                      />
+                    </motion.button>
+                  )}
 
-                  <motion.button
-                    whileHover={{
-                      scale: 1.05,
-                      boxShadow: "0 0 25px rgba(59, 130, 246, 0.4)",
-                    }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => openAuthModal("register")}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden group"
-                  >
-                    <span className="relative z-10">{t('header.register')}</span>
-                    <motion.div
-                      className="absolute inset-0 bg-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                      initial={{ x: "-100%" }}
-                      whileHover={{ x: "100%" }}
-                      transition={{ duration: 0.6 }}
-                    />
-                  </motion.button>
+                  {registerButtonText && (
+                    <motion.button
+                      whileHover={{
+                        scale: 1.05,
+                        boxShadow: "0 0 25px rgba(59, 130, 246, 0.4)",
+                      }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => openAuthModal("register")}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden group"
+                    >
+                      <span className="relative z-10">{registerButtonText}</span>
+                      <motion.div
+                        className="absolute inset-0 bg-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        initial={{ x: "-100%" }}
+                        whileHover={{ x: "100%" }}
+                        transition={{ duration: 0.6 }}
+                      />
+                    </motion.button>
+                  )}
                 </>
               )}
             </div>
 
-            {/* Toggle Mobile */}
+            {/* Mobile Toggle */}
             <div className="md:hidden flex items-center space-x-2">
-              {/* Seletor de Idioma Mobile */}
               <LanguageSelector />
               
               <motion.button
@@ -220,7 +257,7 @@ export default function Header() {
           </div>
         </nav>
 
-        {/* Menu Mobile */}
+        {/* Mobile Menu */}
         <motion.div
           initial={false}
           animate={isOpen ? { opacity: 1, height: "auto" } : { opacity: 0, height: 0 }}
@@ -263,48 +300,57 @@ export default function Header() {
                     </div>
                   </div>
 
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                      setIsOpen(false);
-                    }}
-                    className="block w-full text-left text-gray-300 hover:text-white px-3 py-3 text-base font-medium bg-gray-800/50 rounded-lg transition-all duration-300"
-                  >
-                    {t('header.profile')}
-                  </motion.button>
+                  {profileButtonText && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        // Add profile navigation logic here
+                        setIsOpen(false);
+                      }}
+                      className="block w-full text-left text-gray-300 hover:text-white px-3 py-3 text-base font-medium bg-gray-800/50 rounded-lg transition-all duration-300"
+                    >
+                      {profileButtonText}
+                    </motion.button>
+                  )}
 
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                      logout();
-                      setIsOpen(false);
-                    }}
-                    className="block w-full text-left text-red-400 hover:text-red-300 px-3 py-3 text-base font-medium bg-red-500/10 rounded-lg transition-all duration-300"
-                  >
-                    {t('header.logout')}
-                  </motion.button>
+                  {logoutButtonText && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        logout();
+                        setIsOpen(false);
+                      }}
+                      className="block w-full text-left text-red-400 hover:text-red-300 px-3 py-3 text-base font-medium bg-red-500/10 rounded-lg transition-all duration-300"
+                    >
+                      {logoutButtonText}
+                    </motion.button>
+                  )}
                 </div>
               ) : (
                 <>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => openAuthModal("login")}
-                    className="block w-full text-left text-gray-300 hover:text-white px-3 py-3 text-base font-medium bg-gray-800/50 rounded-lg transition-all duration-300"
-                  >
-                    {t('header.login')}
-                  </motion.button>
+                  {loginButtonText && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => openAuthModal("login")}
+                      className="block w-full text-left text-gray-300 hover:text-white px-3 py-3 text-base font-medium bg-gray-800/50 rounded-lg transition-all duration-300"
+                    >
+                      {loginButtonText}
+                    </motion.button>
+                  )}
 
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => openAuthModal("register")}
-                    className="block w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-3 rounded-lg text-base font-medium"
-                  >
-                    {t('header.register')}
-                  </motion.button>
+                  {registerButtonText && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => openAuthModal("register")}
+                      className="block w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-3 rounded-lg text-base font-medium"
+                    >
+                      {registerButtonText}
+                    </motion.button>
+                  )}
                 </>
               )}
             </div>
@@ -312,7 +358,7 @@ export default function Header() {
         </motion.div>
       </motion.header>
 
-      {/* Modal de Autenticação */}
+      {/* Auth Modal */}
       <AuthModal
         isOpen={authModal.isOpen}
         onClose={closeAuthModal}

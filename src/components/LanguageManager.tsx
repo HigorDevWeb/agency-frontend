@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
+import { LOCALE_INFO } from '@/lib/api';
 
 export default function LanguageManager() {
   const { language } = useLanguage();
@@ -10,13 +11,10 @@ export default function LanguageManager() {
     // Atualizar o atributo lang do HTML baseado no idioma selecionado
     if (typeof window !== 'undefined' && typeof document !== 'undefined') {
       const htmlElement = document.documentElement;
-      const langMap = {
-        'pt': 'pt-BR',
-        'en': 'en-US',
-        'es': 'es-ES'
-      };
+      htmlElement.lang = LOCALE_INFO[language]?.fullCode || 'pt-BR';
       
-      htmlElement.lang = langMap[language] || 'pt-BR';
+      // Adicionar atributo de data-locale para uso em CSS se necessário
+      document.body.setAttribute('data-locale', language);
     }
   }, [language]);
 

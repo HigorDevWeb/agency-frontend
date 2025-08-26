@@ -2,6 +2,8 @@
 
 import { motion, useInView } from "framer-motion";
 import { useRef, useEffect, useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
+import { getTechStackSection } from "@/lib/tech-stack/getTechStackSection";
 
 const techLogos = [
   { name: "React", icon: "⚛️", color: "from-blue-400 to-cyan-400" },
@@ -17,6 +19,7 @@ const techLogos = [
 export default function TechStack() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: false });
+  const { language } = useLanguage();
 
   const [title, setTitle] = useState("Tech Stack");
   const [paragraph, setParagraph] = useState("Tecnologias mais demandadas no mercado");
@@ -24,9 +27,8 @@ export default function TechStack() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch("https://api.recruitings.info/api/tech-stack-section?populate=*");
-        const json = await res.json();
-        const data = json.data?.attributes;
+        const data = await getTechStackSection(language);
+        
         if (data) {
           setTitle(data.MainTitle || "Tech Stack");
           setParagraph(data.paragraphTech || "Tecnologias mais demandadas no mercado");
@@ -37,7 +39,7 @@ export default function TechStack() {
     }
 
     fetchData();
-  }, []);
+  }, [language]);
 
   return (
     <section ref={ref} className="py-20 px-4">

@@ -2,15 +2,15 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
-import { useLanguage, Language } from "@/context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { SupportedLocale, SUPPORTED_LOCALES, LOCALE_INFO } from "@/lib/api";
 
-const languages = [
-  { code: 'pt', name: 'Português', flag: '🇧🇷' },
-  { code: 'en', name: 'Inglês', flag: '🇺🇸' },
-  { code: 'es', name: 'Espanhol', flag: '🇪🇸' },
-  { code: 'ru', name: 'Russo', flag: '🇷🇺' },
-  { code: 'uk', name: 'Ucraniano', flag: '🇺🇦' },
-] as const;
+// Usar apenas os locales suportados de acordo com a configuração central
+const languages = SUPPORTED_LOCALES.map(code => ({
+  code,
+  name: LOCALE_INFO[code].name,
+  flag: LOCALE_INFO[code].flag
+}));
 
 export default function LanguageSelector() {
   const { language, setLanguage } = useLanguage();
@@ -31,7 +31,7 @@ export default function LanguageSelector() {
 
   const currentLanguage = languages.find(lang => lang.code === language);
 
-  const handleLanguageChange = (newLanguage: Language) => {
+  const handleLanguageChange = (newLanguage: SupportedLocale) => {
     setLanguage(newLanguage);
     setIsOpen(false);
   };
@@ -89,7 +89,7 @@ export default function LanguageSelector() {
                     x: 4
                   }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => handleLanguageChange(lang.code as Language)}
+                  onClick={() => handleLanguageChange(lang.code)}
                   className={`w-full flex items-center space-x-3 px-4 py-3 text-left transition-colors duration-200 ${
                     language === lang.code
                       ? "text-blue-400 bg-blue-500/10"

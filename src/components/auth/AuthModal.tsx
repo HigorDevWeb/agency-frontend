@@ -64,9 +64,9 @@ export default function AuthModal({
           getLoginPage(),
           getRegisterPage(),
         ]);
-        
-        setLoginData(loginResponse.attributes);
-        setRegisterData(registerResponse.attributes);
+
+        setLoginData(loginResponse);
+        setRegisterData(registerResponse);
       } catch (error) {
         console.error("Erro ao carregar dados do modal:", error);
       } finally {
@@ -219,12 +219,10 @@ export default function AuthModal({
                 </motion.div>
 
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  {currentData?.title || (type === "login" ? "Bem-vindo de volta!" : "Junte-se a nós!")}
+                  {currentData?.title}
                 </h2>
                 <p className="text-gray-400 mt-2">
-                  {currentData?.subtitle || (type === "login"
-                    ? "Acesse sua conta para encontrar as melhores oportunidades"
-                    : "Crie sua conta e acelere sua carreira tech")}
+                  {currentData?.subtitle}
                 </p>
               </motion.div>
 
@@ -258,14 +256,14 @@ export default function AuthModal({
               >
                 <div className="flex-1 h-px bg-gray-700"></div>
                 <span className="px-4 text-gray-400 text-sm">
-                  {currentData?.orContinueWithText || "ou continue com email"}
+                  {currentData?.orContinueWithText}
                 </span>
                 <div className="flex-1 h-px bg-gray-700"></div>
               </motion.div>
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
-                {type === "register" && (
+                {type === "register" && registerData && (
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -275,7 +273,7 @@ export default function AuthModal({
                       whileFocus={{ scale: 1.02, borderColor: "#3b82f6" }}
                       type="text"
                       name="name"
-                      placeholder={registerData?.namePlaceholder || "Nome completo"}
+                      placeholder={registerData.namePlaceholder}
                       value={formData.name}
                       onChange={handleChange}
                       className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
@@ -293,7 +291,7 @@ export default function AuthModal({
                     whileFocus={{ scale: 1.02, borderColor: "#3b82f6" }}
                     type="email"
                     name="email"
-                    placeholder={type === "login" ? "Email" : (currentData?.emailPlaceholder || "Email")}
+                    placeholder={currentData?.emailPlaceholder}
                     value={formData.email}
                     onChange={handleChange}
                     className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
@@ -310,7 +308,7 @@ export default function AuthModal({
                     whileFocus={{ scale: 1.02, borderColor: "#3b82f6" }}
                     type="password"
                     name="password"
-                    placeholder={type === "login" ? "Senha" : (currentData?.passwordPlaceholder || "Senha")}
+                    placeholder={currentData?.passwordPlaceholder}
                     value={formData.password}
                     onChange={handleChange}
                     className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
@@ -318,7 +316,7 @@ export default function AuthModal({
                   />
                 </motion.div>
 
-                {type === "register" && (
+                {type === "register" && registerData && (
                   <>
                     <motion.div
                       initial={{ opacity: 0, x: -20 }}
@@ -329,7 +327,7 @@ export default function AuthModal({
                         whileFocus={{ scale: 1.02, borderColor: "#3b82f6" }}
                         type="password"
                         name="confirmPassword"
-                        placeholder={registerData?.confirmPasswordPlaceholder || "Confirmar senha"}
+                        placeholder={registerData.confirmPasswordPlaceholder}
                         value={formData.confirmPassword}
                         onChange={handleChange}
                         className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
@@ -349,7 +347,7 @@ export default function AuthModal({
                         onChange={handleChange}
                         className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
                       >
-                        <option value="developer">Desenvolvedor</option>
+                        <option value="developer">{registerData.roleSelectPlaceholder}</option>
                         <option value="company">Empresa</option>
                       </motion.select>
                     </motion.div>
@@ -380,9 +378,9 @@ export default function AuthModal({
                       className="w-6 h-6 border-2 border-white border-t-transparent rounded-full mx-auto"
                     />
                   ) : type === "login" ? (
-                    "Entrar"
+                    loginData?.loginButtonText
                   ) : (
-                    registerData?.registerButtonText || "Criar Conta"
+                    registerData?.registerButtonText
                   )}
 
                   {isLoading && (
@@ -396,7 +394,7 @@ export default function AuthModal({
                 </motion.button>
               </form>
 
-              {type === "login" && (
+              {type === "login" && loginData && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -407,7 +405,7 @@ export default function AuthModal({
                     whileHover={{ scale: 1.05 }}
                     className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
                   >
-                    {loginData?.forgotPasswordText || "Esqueceu sua senha?"}
+                    {loginData.forgotPasswordText}
                   </motion.button>
                 </motion.div>
               )}
@@ -420,17 +418,17 @@ export default function AuthModal({
               >
                 <span className="text-gray-400">
                   {type === "login"
-                    ? loginData?.signupHintText || "Não tem uma conta?"
-                    : registerData?.loginLinkText || "Já tem uma conta?"}
+                    ? loginData?.signupHintText
+                    : registerData?.loginLinkText}
                 </span>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   onClick={onSwitchMode}
                   className="ml-2 text-blue-400 hover:text-blue-300 font-medium transition-colors"
                 >
-                  {type === "login" 
-                    ? loginData?.signupLinkText || "Cadastre-se" 
-                    : registerData?.loginHintText || "Faça login"}
+                  {type === "login"
+                    ? loginData?.signupLinkText
+                    : registerData?.loginHintText}
                 </motion.button>
               </motion.div>
             </div>

@@ -8,18 +8,22 @@ import { getHeroSection, HeroButton } from "@/lib/hero-section/getHeroSection";
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function HeroSection() {
-  const { t } = useLanguage();
+  const { language } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [hero, setHero] = useState<HeroButton | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Estado para textos dos botões que vêm da API
+  const [exploreButtonText, setExploreButtonText] = useState('Explorar Vagas');
+  const [registerButtonText, setRegisterButtonText] = useState('Cadastrar Empresa');
+  const [errorText, setErrorText] = useState('Erro ao carregar dados');
 
   // Evita renderizar antes do client-side
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Busca dados do Strapi
+  // Busca dados do Strapi com o locale atual
   useEffect(() => {
     let isMounted = true;
 
@@ -28,15 +32,27 @@ export default function HeroSection() {
         setLoading(true);
         setError(null);
         
-        const data = await getHeroSection();
+        // Passar o locale para a função getHeroSection
+        const data = await getHeroSection(language);
         
         if (isMounted && data?.heroButton?.length) {
           setHero(data.heroButton[0]);
+          
+          // Atualizar textos dos botões
+          setExploreButtonText(data.heroButton[0].ExplorerButton);
+          setRegisterButtonText(data.heroButton[0].RegisterCompanyButton);
+          
+          // Definir texto de erro com base no locale
+          if (language === 'en') {
+            setErrorText('Error loading data');
+          } else {
+            setErrorText('Erro ao carregar dados');
+          }
         }
       } catch (err) {
         if (isMounted) {
           console.error("Erro ao carregar HeroSection:", err);
-          setError("Erro ao carregar dados");
+          setError(language === 'en' ? 'Error loading data' : 'Erro ao carregar dados');
         }
       } finally {
         if (isMounted) {
@@ -52,7 +68,7 @@ export default function HeroSection() {
     return () => {
       isMounted = false;
     };
-  }, [mounted]); // Removida a dependência de t para evitar re-renders
+  }, [mounted, language]); // Adicionada dependência de language para recarregar quando mudar o idioma
 
   // Função para navegar para a seção de jobs
   const scrollToJobs = () => {
@@ -88,7 +104,7 @@ export default function HeroSection() {
           <Matrix3D />
         </div>
         <div className="relative z-10 text-center">
-          <p className="text-red-400">{t('common.error')}</p>
+          <p className="text-red-400">{errorText}</p>
         </div>
       </section>
     );
@@ -154,7 +170,7 @@ export default function HeroSection() {
             onClick={scrollToJobs}
             className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg text-white font-semibold text-lg transition-all duration-300"
           >
-            {t('hero.explore_jobs')}
+            {exploreButtonText}
           </motion.button>
 
           <motion.button
@@ -162,7 +178,7 @@ export default function HeroSection() {
             whileTap={{ scale: 0.95 }}
             className="px-8 py-4 border-2 border-gray-400 rounded-lg text-gray-300 font-semibold text-lg hover:text-white transition-all duration-300"
           >
-            {t('hero.register_company')}
+            {registerButtonText}
           </motion.button>
         </motion.div>
       </motion.div>

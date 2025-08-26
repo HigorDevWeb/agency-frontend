@@ -3,6 +3,7 @@
 import { motion, useInView } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 import { getContactPage } from "@/lib/contact-page/contact-page";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ContactPageData {
   section_title: string;
@@ -31,6 +32,7 @@ interface ContactPageData {
 export default function ContactSection() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: false });
+  const { language } = useLanguage();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -43,7 +45,9 @@ export default function ContactSection() {
   useEffect(() => {
     const fetchContactData = async () => {
       try {
-        const data = await getContactPage();
+        setLoading(true);
+        // Passa o idioma atual para a função getContactPage
+        const data = await getContactPage(language);
         setContactData(data);
       } catch (error) {
         console.error("Erro ao buscar dados de contato:", error);
@@ -53,7 +57,8 @@ export default function ContactSection() {
     };
 
     fetchContactData();
-  }, []);
+    // Refetcha dados quando o idioma mudar
+  }, [language]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +96,19 @@ export default function ContactSection() {
       </section>
     );
   }
+  
+  // Valores padrão para campos que podem estar ausentes em algumas traduções
+  const contactTitle = contactData.contactTitle || "Informações de Contato";
+  const socialTitle = contactData.socialTitle || "Redes Sociais";
+  
+  // Inicializar formulário com valores padrão caso não exista na localização
+  const contactForm = contactData.contactForm || {
+    namePlaceholder: "Seu Nome",
+    emailPlaceholder: "Seu Email",
+    empresaPlaceholder: "Empresa (opcional)",
+    mensagePlaceholder: "Sua Mensagem",
+    buttonSend: "Enviar Mensagem"
+  };
 
   // Mapeamento de ícones para os tipos de contato
   const getIconForLabel = (label: string) => {
@@ -127,11 +145,11 @@ export default function ContactSection() {
             transition={{ delay: 0.3 }}
           >
             <h3 className="text-2xl font-bold mb-6 text-white">
-              {contactData.contactTitle}
+              {contactTitle}
             </h3>
 
             <div className="space-y-6">
-              {contactData.contactInfo.map((item, index) => (
+              {(contactData.contactInfo || []).map((item, index) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, x: -30 }}
@@ -158,10 +176,10 @@ export default function ContactSection() {
               className="mt-8"
             >
               <h4 className="text-lg font-semibold mb-4 text-white">
-                {contactData.socialTitle}
+                {socialTitle}
               </h4>
               <div className="flex gap-4">
-                {contactData.socialLinks.length > 0 ? (
+                {(contactData.socialLinks && contactData.socialLinks.length > 0) ? (
                   contactData.socialLinks.map((social, index) => (
                     <motion.div
                       key={index}
@@ -207,7 +225,7 @@ export default function ContactSection() {
                   whileFocus={{ scale: 1.02 }}
                   type="text"
                   name="name"
-                  placeholder={contactData.contactForm.namePlaceholder}
+                  placeholder={contactForm.namePlaceholder}
                   value={formData.name}
                   onChange={handleChange}
                   className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-all duration-300"
@@ -220,7 +238,7 @@ export default function ContactSection() {
                   whileFocus={{ scale: 1.02 }}
                   type="email"
                   name="email"
-                  placeholder={contactData.contactForm.emailPlaceholder}
+                  placeholder={contactForm.emailPlaceholder}
                   value={formData.email}
                   onChange={handleChange}
                   className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-all duration-300"
@@ -233,7 +251,7 @@ export default function ContactSection() {
                   whileFocus={{ scale: 1.02 }}
                   type="text"
                   name="company"
-                  placeholder={contactData.contactForm.empresaPlaceholder}
+                  placeholder={contactForm.empresaPlaceholder}
                   value={formData.company}
                   onChange={handleChange}
                   className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-all duration-300"
@@ -244,7 +262,7 @@ export default function ContactSection() {
                 <motion.textarea
                   whileFocus={{ scale: 1.02 }}
                   name="message"
-                  placeholder={contactData.contactForm.mensagePlaceholder}
+                  placeholder={contactForm.mensagePlaceholder}
                   value={formData.message}
                   onChange={handleChange}
                   rows={5}
@@ -262,7 +280,7 @@ export default function ContactSection() {
                 type="submit"
                 className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg text-white font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300"
               >
-                {contactData.contactForm.buttonSend}
+                {contactForm.buttonSend}
               </motion.button>
             </form>
           </motion.div>

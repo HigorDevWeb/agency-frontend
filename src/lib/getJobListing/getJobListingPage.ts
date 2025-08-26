@@ -50,13 +50,21 @@ export interface JobListingPage {
 
 // lib/getJobListing/getJobListingPage.ts
 
-export async function getJobListingPage(): Promise<JobListingPage | null> {
+export async function getJobListingPage(locale?: string): Promise<JobListingPage | null> {
     try {
-        const res = await fetch("https://api.recruitings.info/api/job-listing-page?populate=*", {
+        // Adicionar locale como parâmetro de consulta se fornecido
+        const localeParam = locale ? `locale=${locale}&` : '';
+        
+        const res = await fetch(`https://api.recruitings.info/api/job-listing-page?${localeParam}populate=*`, {
+            headers: { "Content-Type": "application/json" },
             // Se usar Next.js, ajuste cache/revalidate como preferir
             next: { revalidate: 60 },
         });
-        if (!res.ok) return null;
+        
+        if (!res.ok) {
+            throw new Error(`Erro na API: ${res.status}`);
+        }
+        
         const { data } = await res.json();
         return data as JobListingPage;
     } catch (err) {

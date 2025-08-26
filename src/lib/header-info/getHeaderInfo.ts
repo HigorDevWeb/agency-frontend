@@ -19,12 +19,16 @@ export interface HeaderInfo {
     logo: File;
     menu: HeaderMenuItem[];
     localizations: HeaderLocalization[];
+    profileButtonText?: string; // Texto para o botão de perfil (opcional)
+    logoutButtonText?: string; // Texto para o botão de logout (opcional)
 }
 
-export const getHeaderInfo = async (): Promise<HeaderInfo | null> => {
+export const getHeaderInfo = async (locale?: string): Promise<HeaderInfo | null> => {
     try {
+        // Adicionar locale como parâmetro de consulta se fornecido
+        const localeParam = locale ? `locale=${locale}&` : '';
         const res = await fetch(
-            `https://api.recruitings.info/api/header-info?populate=*`,
+            `https://api.recruitings.info/api/header-info?${localeParam}populate[menu]=true&populate[logo]=true`,
             {
                 headers: { "Content-Type": "application/json" },
                 cache: "no-store", // ou 'force-cache' se preferir SSR

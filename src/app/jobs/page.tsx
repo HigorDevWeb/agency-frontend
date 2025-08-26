@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, MapPin, Clock, DollarSign } from "lucide-react";
 import { filterJobs } from "@/services/jobsService";
 import type { FrontCardJob } from "@/lib/getJobListing/getJobListingPage";
+import { getJobListingPage } from "@/lib/getJobListing/getJobListingPage";
+import { useLanguage } from "@/context/LanguageContext";
 
 // Garantir que o filterJobs seja usado corretamente (async)
 export default function AllJobsPage() {
@@ -14,20 +16,59 @@ export default function AllJobsPage() {
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [filteredJobs, setFilteredJobs] = useState<FrontCardJob[]>([]);
   const router = useRouter();
+  const { language } = useLanguage();
+  
+  // Estado para os textos traduzidos
+  const [pageTexts, setPageTexts] = useState({
+    backButton: "Voltar",
+    pageTitle: "Todas as Vagas",
+    pageSubtitle: "Encontre a oportunidade perfeita para você",
+    noJobsFound: "Nenhuma vaga encontrada",
+    tryAdjustFilters: "Tente ajustar os filtros para encontrar mais oportunidades"
+  });
 
   const filters = ["all", "remote", "senior", "pleno", "junior", "fullstack"];
 
-  // Sempre que o filtro mudar, buscar jobs dinamicamente da Strapi
+  // Buscar textos da página e configurações quando o idioma mudar
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchPageData = async () => {
+      try {
+        const jobsPageData = await getJobListingPage(language);
+        if (isMounted && jobsPageData) {
+          // Atualizar textos da página
+          setPageTexts({
+            backButton: "Voltar", // Valor padrão caso não haja tradução
+            pageTitle: jobsPageData.featured_title || "Todas as Vagas",
+            pageSubtitle: jobsPageData.featured_subtitle || "Encontre a oportunidade perfeita para você",
+            noJobsFound: "Nenhuma vaga encontrada",
+            tryAdjustFilters: "Tente ajustar os filtros para encontrar mais oportunidades"
+          });
+        }
+      } catch (error) {
+        console.error("Erro ao buscar dados da página:", error);
+      }
+    };
+    
+    fetchPageData();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [language]);
+  
+  // Sempre que o filtro ou idioma mudar, buscar jobs dinamicamente da Strapi
   useEffect(() => {
     let isMounted = true;
     (async () => {
-      const jobs = await filterJobs(selectedFilter);
+      const jobs = await filterJobs(selectedFilter, language);
       if (isMounted) setFilteredJobs(jobs);
     })();
     return () => {
       isMounted = false;
     };
-  }, [selectedFilter]);
+  }, [selectedFilter, language]);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -39,7 +80,7 @@ export default function AllJobsPage() {
           className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-8"
         >
           <ArrowLeft size={20} />
-          Voltar
+          {pageTexts.backButton}
         </motion.button>
 
         <motion.div
@@ -50,10 +91,10 @@ export default function AllJobsPage() {
           className="text-center mb-12"
         >
           <h1 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
-            Todas as Vagas
+            {pageTexts.pageTitle}
           </h1>
           <p className="text-xl text-gray-300">
-            Encontre a oportunidade perfeita para você
+            {pageTexts.pageSubtitle}
           </p>
         </motion.div>
 
@@ -192,10 +233,10 @@ export default function AllJobsPage() {
             className="text-center py-12"
           >
             <h3 className="text-2xl font-bold text-gray-400 mb-4">
-              Nenhuma vaga encontrada
+              {pageTexts.noJobsFound}
             </h3>
             <p className="text-gray-500">
-              Tente ajustar os filtros para encontrar mais oportunidades
+              {pageTexts.tryAdjustFilters}
             </p>
           </motion.div>
         )}
