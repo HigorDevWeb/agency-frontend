@@ -148,18 +148,14 @@ class AuthService {
         throw new Error("Email inválido");
       }
 
-      // Adicionar URL de confirmação personalizada (baseada na configuração do Strapi)
-      const confirmationUrl = `${window.location.origin}/login?confirmed=true`;
-      
+      // No Strapi 5, não enviamos confirmationUrl no body
+      // A URL de confirmação deve ser configurada no Strapi Admin Panel
       const response = await fetch(`${this.baseURL}/api/auth/local/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...data,
-          confirmationUrl // Strapi utilizará esta URL para o link de confirmação
-        }),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
@@ -258,16 +254,13 @@ class AuthService {
   // Reenviar email de confirmação
   async resendConfirmation(email: string): Promise<{ message: string }> {
     try {
-      const confirmationUrl = `${window.location.origin}/login?confirmed=true`;
-      
       const response = await fetch(`${this.baseURL}/api/auth/send-email-confirmation`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
-          confirmationUrl
+          email
         }),
       });
 

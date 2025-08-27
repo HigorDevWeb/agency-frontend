@@ -20,17 +20,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const confirmationUrl = `${request.nextUrl.origin}/login?confirmed=true`;
-
-    // Enviar requisição para o Strapi
-      const strapiResponse = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/auth/send-email-confirmation`, {
+    // Enviar requisição para o Strapi (sem confirmationUrl no body)
+    const strapiResponse = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/auth/send-email-confirmation`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        email,
-        confirmationUrl
+        email
       }),
     });
 
