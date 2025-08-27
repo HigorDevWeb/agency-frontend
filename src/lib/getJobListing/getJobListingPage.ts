@@ -27,11 +27,9 @@ export interface InsideCardJob {
     LevelLabel: string;
     applyButton: string;
     JobDescription: string;
-    AboutCompany: string;
     jobRequirements: string;
     jobbenefits: string;
     labelDescription: string;
-    labelAboutCompany: string;
     labelRequirements: string;
     labelBenefits: string;
 }
