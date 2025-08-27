@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { getLoginPage } from "@/lib/login-page/login";
 import { getRegisterPage } from "@/lib/register-page/register";
 import { useAuth } from "@/context/AuthContext";
+import type { RegisterResponse } from "@/services/authService";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -45,7 +46,7 @@ export default function AuthModal({
   type,
   onSwitchMode,
 }: AuthModalProps) {
-  const { login, register, loginWithGoogle, forgotPassword } = useAuth();
+  const { login, register, loginWithGoogle, forgotPassword, resendConfirmation } = useAuth();
   const [currentType, setCurrentType] = useState<"login" | "register" | "forgot-password">(type);
   const [formData, setFormData] = useState({
     email: "",
@@ -60,6 +61,8 @@ export default function AuthModal({
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [registrationEmail, setRegistrationEmail] = useState<string | null>(null);
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
 
   // Sync currentType with prop when it changes
   useEffect(() => {
@@ -102,13 +105,26 @@ export default function AuthModal({
           throw new Error("As senhas não coincidem");
         }
         
-        await register({
+        const response: RegisterResponse = await register({
           name: formData.name,
           email: formData.email,
           password: formData.password,
           userType: "developer", // Sempre developer como padrão
         });
-        onClose();
+        
+        // Exibir tela de confirmação de email
+        setRegistrationEmail(formData.email);
+        setSuccessMessage(response.message);
+        setShowEmailConfirmation(true);
+        
+        // Limpar formulário
+        setFormData({
+          email: "",
+          password: "",
+          name: "",
+          confirmPassword: "",
+          userType: "developer",
+        });
       } else if (currentType === "forgot-password") {
         await forgotPassword(formData.email);
         setSuccessMessage("Email de recuperação enviado com sucesso! Verifique sua caixa de entrada.");
@@ -130,6 +146,31 @@ export default function AuthModal({
 
   const handleGoogleLogin = () => {
     loginWithGoogle();
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!registrationEmail) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await resendConfirmation(registrationEmail);
+      setSuccessMessage(response.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao reenviar confirmação";
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBackToLogin = () => {
+    setShowEmailConfirmation(false);
+    setRegistrationEmail(null);
+    setSuccessMessage(null);
+    setError(null);
+    setCurrentType("login");
   };
 
   const handleChange = (
@@ -260,32 +301,126 @@ export default function AuthModal({
             </motion.button>
 
             <div className="relative z-10">
-              {/* Header */}
-              <motion.div
-                initial={{ y: -20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="text-center mb-8"
-              >
+              {/* Email Confirmation Screen */}
+              {showEmailConfirmation ? (
                 <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{
-                    duration: 20,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-center"
                 >
-                  <span className="text-white font-bold text-2xl">⚡</span>
-                </motion.div>
+                  {/* Success Icon */}
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", duration: 0.6 }}
+                    className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6"
+                  >
+                    <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </motion.div>
 
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  {currentType === "forgot-password" ? "Recuperar Senha" : currentData?.title}
-                </h2>
-                <p className="text-gray-400 mt-2">
-                  {currentType === "forgot-password" ? "Digite seu email para receber o link de recuperação" : currentData?.subtitle}
-                </p>
-              </motion.div>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent mb-4">
+                    Verifique seu Email
+                  </h2>
+
+                  <p className="text-gray-300 mb-2">
+                    Enviamos um link de confirmação para:
+                  </p>
+                  <p className="text-blue-400 font-semibold mb-6">
+                    {registrationEmail}
+                  </p>
+
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
+                    <p className="text-blue-300 text-sm">
+                      📧 <strong>Próximo passo:</strong> Clique no link que enviamos para confirmar sua conta e poder fazer login.
+                    </p>
+                  </div>
+
+                  {/* Success/Error Messages */}
+                  {successMessage && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-green-500/20 border border-green-500/50 rounded-lg p-3 mb-4"
+                    >
+                      <p className="text-green-400 text-sm">{successMessage}</p>
+                    </motion.div>
+                  )}
+
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-4"
+                    >
+                      <p className="text-red-400 text-sm">{error}</p>
+                    </motion.div>
+                  )}
+
+                  <div className="space-y-3">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleResendConfirmation}
+                      disabled={isLoading}
+                      className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50"
+                    >
+                      {isLoading ? (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mx-auto"
+                        />
+                      ) : (
+                        "Reenviar Email"
+                      )}
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleBackToLogin}
+                      className="w-full py-3 bg-gray-700 text-gray-300 rounded-lg font-semibold hover:bg-gray-600 hover:text-white transition-all duration-300"
+                    >
+                      Voltar ao Login
+                    </motion.button>
+                  </div>
+
+                  <div className="mt-6 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                    <p className="text-yellow-400 text-xs">
+                      💡 <strong>Dica:</strong> Verifique também sua pasta de spam/lixo eletrônico
+                    </p>
+                  </div>
+                </motion.div>
+              ) : (
+                <>
+                  {/* Header */}
+                  <motion.div
+                    initial={{ y: -20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="text-center mb-8"
+                  >
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        duration: 20,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                      className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                    >
+                      <span className="text-white font-bold text-2xl">⚡</span>
+                    </motion.div>
+
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                      {currentType === "forgot-password" ? "Recuperar Senha" : currentData?.title}
+                    </h2>
+                    <p className="text-gray-400 mt-2">
+                      {currentType === "forgot-password" ? "Digite seu email para receber o link de recuperação" : currentData?.subtitle}
+                    </p>
+                  </motion.div>
 
               {/* Error and Success Messages */}
               {error && (
@@ -525,6 +660,8 @@ export default function AuthModal({
                     : registerData?.loginHintText}
                 </motion.button>
               </motion.div>
+                </>
+              )}
             </div>
           </motion.div>
         </motion.div>

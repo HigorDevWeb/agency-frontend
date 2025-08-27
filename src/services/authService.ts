@@ -14,6 +14,11 @@ export interface User {
   avatar?: string;
 }
 
+export interface RegisterResponse {
+  message: string;
+  email: string;
+}
+
 export interface AuthResponse {
   jwt: string;
   user: User;
@@ -126,8 +131,8 @@ class AuthService {
     };
   }
 
-  // Registro tradicional (email/senha)
-  async register(data: RegisterData): Promise<AuthResponse> {
+  // Registro com confirmação por email
+  async register(data: RegisterData): Promise<{ message: string; email: string }> {
     try {
       // Validações básicas
       if (!data.email || !data.password || !data.username) {
@@ -143,12 +148,18 @@ class AuthService {
         throw new Error("Email inválido");
       }
 
+      // Adicionar URL de confirmação personalizada
+      const confirmationUrl = `${window.location.origin}/auth/confirm`;
+      
       const response = await fetch(`${this.baseURL}/api/auth/local/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          confirmationUrl // Strapi utilizará esta URL para o link de confirmação
+        }),
       });
 
       if (!response.ok) {
@@ -159,16 +170,77 @@ class AuthService {
         throw new Error(errorMessage);
       }
 
+      // Com confirmação por email, o Strapi não retorna JWT imediatamente
+      // Retornamos uma mensagem de sucesso informando sobre o email
+      console.log('✅ Registro iniciado - Email de confirmação enviado');
+      return {
+        message: "Conta criada com sucesso! Verifique seu email para confirmar sua conta.",
+        email: data.email
+      };
+    } catch (error) {
+      console.error("❌ Erro no registro:", error);
+      throw error;
+    }
+  }
+
+  // Confirmar email após registro
+  async confirmEmail(confirmationToken: string): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${this.baseURL}/api/auth/email-confirmation?confirmation=${confirmationToken}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        const errorMessage = errorData.error?.message || "Erro na confirmação do email";
+        throw new Error(errorMessage);
+      }
+
       const authData: AuthResponse = await response.json();
       
-      // Salvar token e usuário no localStorage
+      // Salvar token e usuário no localStorage após confirmação
       this.setToken(authData.jwt);
       this.setUser(authData.user);
 
-      console.log('✅ Registro realizado com sucesso');
+      console.log('✅ Email confirmado com sucesso');
       return authData;
     } catch (error) {
-      console.error("❌ Erro no registro:", error);
+      console.error("❌ Erro na confirmação do email:", error);
+      throw error;
+    }
+  }
+
+  // Reenviar email de confirmação
+  async resendConfirmation(email: string): Promise<{ message: string }> {
+    try {
+      const confirmationUrl = `${window.location.origin}/auth/confirm`;
+      
+      const response = await fetch(`${this.baseURL}/api/auth/send-email-confirmation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          confirmationUrl
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        const errorMessage = errorData.error?.message || "Erro ao reenviar email de confirmação";
+        throw new Error(errorMessage);
+      }
+
+      console.log('✅ Email de confirmação reenviado');
+      return {
+        message: "Email de confirmação reenviado com sucesso!"
+      };
+    } catch (error) {
+      console.error("❌ Erro ao reenviar confirmação:", error);
       throw error;
     }
   }
