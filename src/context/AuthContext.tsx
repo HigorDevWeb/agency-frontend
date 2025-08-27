@@ -7,6 +7,7 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import authService, { User as StrapiUser, RegisterData as StrapiRegisterData, LoginData } from "@/services/authService";
 
 interface User {
   id: string;
@@ -19,10 +20,14 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
+  loginWithGoogle: () => void;
+  forgotPassword: (email: string) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
+  canApplyToJobs: () => boolean;
 }
 
 interface RegisterData {
@@ -38,40 +43,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Converter usuário do Strapi para formato local
+  const convertStrapiUser = (strapiUser: StrapiUser): User => {
+    return {
+      id: strapiUser.id.toString(),
+      name: strapiUser.username,
+      email: strapiUser.email,
+      userType: "developer", // Padrão, pode ser ajustado conforme sua lógica
+      avatar: `https://ui-avatars.com/api/?name=${strapiUser.username}&background=3b82f6&color=fff`,
+    };
+  };
+
   useEffect(() => {
-    // Verificar se há um usuário logado no localStorage
-    const savedUser = localStorage.getItem("devjobs_user");
-    if (savedUser) {
+    // Verificar se há um usuário logado no authService
+    const checkAuth = async () => {
       try {
-        setUser(JSON.parse(savedUser));
+        if (authService.isAuthenticated()) {
+          const strapiUser = authService.getUser();
+          if (strapiUser) {
+            const localUser = convertStrapiUser(strapiUser);
+            setUser(localUser);
+          } else {
+            // Token existe mas usuário não, tentar obter perfil
+            try {
+              const profile = await authService.getProfile();
+              const localUser = convertStrapiUser(profile);
+              setUser(localUser);
+            } catch (error) {
+              // Token inválido, fazer logout
+              authService.logout();
+            }
+          }
+        }
       } catch (error) {
-        console.error("Erro ao carregar usuário salvo:", error);
-        localStorage.removeItem("devjobs_user");
+        console.error("Erro ao verificar autenticação:", error);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+
+    checkAuth();
   }, []);
 
-  const login = async (email: string) => {
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
 
     try {
-      // Simular chamada de API
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Mock user data
-      const mockUser: User = {
-        id: "1",
-        name: email.split("@")[0],
-        email,
-        userType: "developer",
-        avatar: `https://ui-avatars.com/api/?name=${
-          email.split("@")[0]
-        }&background=3b82f6&color=fff`,
+      const loginData: LoginData = {
+        identifier: email,
+        password: password,
       };
 
-      setUser(mockUser);
-      localStorage.setItem("devjobs_user", JSON.stringify(mockUser));
+      const authResponse = await authService.login(loginData);
+      const localUser = convertStrapiUser(authResponse.user);
+      setUser(localUser);
     } catch (error) {
       throw new Error("Erro ao fazer login", { cause: error });
     } finally {
@@ -83,19 +108,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
 
     try {
-      // Simular chamada de API
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      const newUser: User = {
-        id: Date.now().toString(),
-        name: userData.name,
+      const registerData: StrapiRegisterData = {
+        username: userData.name,
         email: userData.email,
-        userType: userData.userType,
-        avatar: `https://ui-avatars.com/api/?name=${userData.name}&background=8b5cf6&color=fff`,
+        password: userData.password,
       };
 
-      setUser(newUser);
-      localStorage.setItem("devjobs_user", JSON.stringify(newUser));
+      const authResponse = await authService.register(registerData);
+      const localUser = convertStrapiUser(authResponse.user);
+      setUser(localUser);
     } catch (error) {
       throw new Error("Erro ao criar conta", { cause: error });
     } finally {
@@ -103,9 +124,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogle = () => {
+    authService.loginWithGoogle();
+  };
+
+  const forgotPassword = async (email: string) => {
+    try {
+      await authService.forgotPassword({ email });
+    } catch (error) {
+      throw new Error("Erro ao enviar email de recuperação", { cause: error });
+    }
+  };
+
   const logout = () => {
+    authService.logout();
     setUser(null);
-    localStorage.removeItem("devjobs_user");
   };
 
   const updateProfile = async (data: Partial<User>) => {
@@ -114,12 +147,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
 
     try {
-      // Simular chamada de API
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
+      // Atualizar perfil local
       const updatedUser = { ...user, ...data };
       setUser(updatedUser);
-      localStorage.setItem("devjobs_user", JSON.stringify(updatedUser));
+
+      // Aqui você pode implementar a chamada para atualizar no Strapi se necessário
+      // await authService.updateProfile(data);
     } catch (error) {
       throw new Error("Erro ao atualizar perfil", { cause: error });
     } finally {
@@ -127,13 +160,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const canApplyToJobs = (): boolean => {
+    return authService.canApplyToJobs();
+  };
+
   const value = {
     user,
     isLoading,
+    isAuthenticated: authService.isAuthenticated(),
     login,
     register,
+    loginWithGoogle,
+    forgotPassword,
     logout,
     updateProfile,
+    canApplyToJobs,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

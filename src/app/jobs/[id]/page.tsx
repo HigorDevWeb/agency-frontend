@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { getInsideJobById, getJobListingPage } from "@/services/jobsService";
 import ApplyModal from "@/components/ApplyModal";
+import AuthModal from "@/components/auth/AuthModal";
 import { useLanguage } from "@/context/LanguageContext";
 
 import type { InsideCardJob, JobListingPage } from "@/lib/getJobListing/getJobListingPage";
@@ -24,6 +25,8 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showApplyModal, setShowApplyModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalType, setAuthModalType] = useState<"login" | "register">("login");
   const [pageTexts] = useState({
     loading: "Carregando detalhes da vaga...",
     jobNotFound: "Vaga não encontrada",
@@ -71,6 +74,19 @@ export default function JobDetailPage() {
 
   const handleCloseApplyModal = () => {
     setShowApplyModal(false);
+  };
+
+  const handleOpenAuth = () => {
+    setShowAuthModal(true);
+    setAuthModalType("login");
+  };
+
+  const handleCloseAuth = () => {
+    setShowAuthModal(false);
+  };
+
+  const handleSwitchAuthMode = () => {
+    setAuthModalType(authModalType === "login" ? "register" : "login");
   };
 
   // Loading state
@@ -250,6 +266,7 @@ export default function JobDetailPage() {
           <ApplyModal
             open={showApplyModal}
             onClose={handleCloseApplyModal}
+            onOpenAuth={handleOpenAuth}
             job={{
               id: job.id,
               title: job.JobTitle,
@@ -257,6 +274,13 @@ export default function JobDetailPage() {
             }}
           />
         )}
+        
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={handleCloseAuth}
+          type={authModalType}
+          onSwitchMode={handleSwitchAuthMode}
+        />
       </div>
   </div>
   );

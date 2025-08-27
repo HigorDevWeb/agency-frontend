@@ -4,11 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { getLoginPage } from "@/lib/login-page/login";
 import { getRegisterPage } from "@/lib/register-page/register";
+import { useAuth } from "@/context/AuthContext";
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  type: "login" | "register";
+  type: "login" | "register" | "forgot-password";
   onSwitchMode: () => void;
 }
 
@@ -44,6 +45,8 @@ export default function AuthModal({
   type,
   onSwitchMode,
 }: AuthModalProps) {
+  const { login, register, loginWithGoogle, forgotPassword } = useAuth();
+  const [currentType, setCurrentType] = useState<"login" | "register" | "forgot-password">(type);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -55,6 +58,13 @@ export default function AuthModal({
   const [loginData, setLoginData] = useState<LoginData | null>(null);
   const [registerData, setRegisterData] = useState<RegisterData | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Sync currentType with prop when it changes
+  useEffect(() => {
+    setCurrentType(type);
+  }, [type]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -80,13 +90,45 @@ export default function AuthModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
+    setSuccessMessage(null);
 
-    // Simular loading
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      if (currentType === "login") {
+        await login(formData.email, formData.password);
+        onClose();
+      } else if (currentType === "register") {
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error("As senhas não coincidem");
+        }
+        
+        await register({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          userType: formData.userType as "developer" | "company",
+        });
+        onClose();
+      } else if (currentType === "forgot-password") {
+        await forgotPassword(formData.email);
+        setSuccessMessage("Email de recuperação enviado com sucesso! Verifique sua caixa de entrada.");
+        
+        // Limpar formulário e voltar para login após 3 segundos
+        setTimeout(() => {
+          setFormData({ email: "", password: "", name: "", confirmPassword: "", userType: "developer" });
+          setSuccessMessage(null);
+          onSwitchMode(); // Volta para login
+        }, 3000);
+      }
+    } catch (err: any) {
+      setError(err.message || "Erro inesperado");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    console.log(`${type} attempt:`, formData);
-    setIsLoading(false);
-    onClose();
+  const handleGoogleLogin = () => {
+    loginWithGoogle();
   };
 
   const handleChange = (
@@ -99,13 +141,31 @@ export default function AuthModal({
   };
 
   const socialButtons = [
-    { name: "Google", icon: "🔗", color: "from-red-500 to-red-600" },
-    { name: "GitHub", icon: "🐙", color: "from-gray-700 to-gray-800" },
-    { name: "LinkedIn", icon: "💼", color: "from-blue-600 to-blue-700" },
+    { 
+      name: "Google", 
+      icon: "🔗", 
+      color: "from-red-500 to-red-600", 
+      onClick: handleGoogleLogin,
+      isActive: true 
+    },
+    { 
+      name: "GitHub", 
+      icon: "🐙", 
+      color: "from-gray-700 to-gray-800", 
+      onClick: () => {}, // Placeholder para futuras implementações
+      isActive: false 
+    },
+    { 
+      name: "LinkedIn", 
+      icon: "💼", 
+      color: "from-blue-600 to-blue-700", 
+      onClick: () => {}, // Placeholder para futuras implementações
+      isActive: false 
+    },
   ];
 
   // Dados atuais baseados no tipo
-  const currentData = type === "login" ? loginData : registerData;
+  const currentData = currentType === "login" || currentType === "forgot-password" ? loginData : registerData;
 
   // Se ainda está carregando os dados, mostrar loading
   if (isLoadingData) {
@@ -219,51 +279,81 @@ export default function AuthModal({
                 </motion.div>
 
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  {currentData?.title}
+                  {currentType === "forgot-password" ? "Recuperar Senha" : currentData?.title}
                 </h2>
                 <p className="text-gray-400 mt-2">
-                  {currentData?.subtitle}
+                  {currentType === "forgot-password" ? "Digite seu email para receber o link de recuperação" : currentData?.subtitle}
                 </p>
               </motion.div>
 
-              {/* Social login */}
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="grid grid-cols-3 gap-3 mb-6"
-              >
-                {socialButtons.map((social, index) => (
-                  <motion.button
-                    key={social.name}
-                    whileHover={{ scale: 1.05, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 + index * 0.1 }}
-                    className={`bg-gradient-to-r ${social.color} p-3 rounded-lg text-white font-medium text-sm hover:shadow-lg transition-all duration-300`}
-                  >
-                    <span className="text-lg">{social.icon}</span>
-                  </motion.button>
-                ))}
-              </motion.div>
+              {/* Error and Success Messages */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-4"
+                >
+                  <p className="text-red-400 text-sm text-center">{error}</p>
+                </motion.div>
+              )}
 
-              <motion.div
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ delay: 0.4 }}
-                className="flex items-center mb-6"
-              >
-                <div className="flex-1 h-px bg-gray-700"></div>
-                <span className="px-4 text-gray-400 text-sm">
-                  {currentData?.orContinueWithText}
-                </span>
-                <div className="flex-1 h-px bg-gray-700"></div>
-              </motion.div>
+              {successMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-green-500/20 border border-green-500/50 rounded-lg p-3 mb-4"
+                >
+                  <p className="text-green-400 text-sm text-center">{successMessage}</p>
+                </motion.div>
+              )}
+
+              {/* Social login - only show for login and register */}
+              {currentType !== "forgot-password" && (
+                <>
+                  <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="grid grid-cols-3 gap-3 mb-6"
+                  >
+                    {socialButtons.map((social, index) => (
+                      <motion.button
+                        key={social.name}
+                        whileHover={social.isActive ? { scale: 1.05, y: -2 } : {}}
+                        whileTap={social.isActive ? { scale: 0.95 } : {}}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 + index * 0.1 }}
+                        onClick={social.isActive ? social.onClick : undefined}
+                        disabled={!social.isActive}
+                        className={`bg-gradient-to-r ${social.color} p-3 rounded-lg text-white font-medium text-sm hover:shadow-lg transition-all duration-300 ${
+                          !social.isActive ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg'
+                        }`}
+                        type="button"
+                      >
+                        <span className="text-lg">{social.icon}</span>
+                      </motion.button>
+                    ))}
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="flex items-center mb-6"
+                  >
+                    <div className="flex-1 h-px bg-gray-700"></div>
+                    <span className="px-4 text-gray-400 text-sm">
+                      {currentData?.orContinueWithText}
+                    </span>
+                    <div className="flex-1 h-px bg-gray-700"></div>
+                  </motion.div>
+                </>
+              )}
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
-                {type === "register" && registerData && (
+                {currentType === "register" && registerData && (
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -285,13 +375,13 @@ export default function AuthModal({
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: type === "register" ? 0.6 : 0.5 }}
+                  transition={{ delay: currentType === "register" ? 0.6 : 0.5 }}
                 >
                   <motion.input
                     whileFocus={{ scale: 1.02, borderColor: "#3b82f6" }}
                     type="email"
                     name="email"
-                    placeholder={currentData?.emailPlaceholder}
+                    placeholder={currentType === "forgot-password" ? "Digite seu email" : currentData?.emailPlaceholder}
                     value={formData.email}
                     onChange={handleChange}
                     className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
@@ -299,24 +389,26 @@ export default function AuthModal({
                   />
                 </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: type === "register" ? 0.7 : 0.6 }}
-                >
-                  <motion.input
-                    whileFocus={{ scale: 1.02, borderColor: "#3b82f6" }}
-                    type="password"
-                    name="password"
-                    placeholder={currentData?.passwordPlaceholder}
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
-                    required
-                  />
-                </motion.div>
+                {currentType !== "forgot-password" && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: currentType === "register" ? 0.7 : 0.6 }}
+                  >
+                    <motion.input
+                      whileFocus={{ scale: 1.02, borderColor: "#3b82f6" }}
+                      type="password"
+                      name="password"
+                      placeholder={currentData?.passwordPlaceholder}
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+                      required
+                    />
+                  </motion.div>
+                )}
 
-                {type === "register" && registerData && (
+                {currentType === "register" && registerData && (
                   <>
                     <motion.div
                       initial={{ opacity: 0, x: -20 }}
@@ -357,7 +449,7 @@ export default function AuthModal({
                 <motion.button
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: type === "register" ? 1 : 0.7 }}
+                  transition={{ delay: currentType === "register" ? 1 : 0.7 }}
                   whileHover={{
                     scale: 1.02,
                     boxShadow: "0 0 30px rgba(59, 130, 246, 0.4)",
@@ -377,10 +469,12 @@ export default function AuthModal({
                       }}
                       className="w-6 h-6 border-2 border-white border-t-transparent rounded-full mx-auto"
                     />
-                  ) : type === "login" ? (
+                  ) : currentType === "login" ? (
                     loginData?.loginButtonText
-                  ) : (
+                  ) : currentType === "register" ? (
                     registerData?.registerButtonText
+                  ) : (
+                    "Enviar Email de Recuperação"
                   )}
 
                   {isLoading && (
@@ -394,7 +488,7 @@ export default function AuthModal({
                 </motion.button>
               </form>
 
-              {type === "login" && loginData && (
+              {currentType === "login" && loginData && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -403,9 +497,27 @@ export default function AuthModal({
                 >
                   <motion.button
                     whileHover={{ scale: 1.05 }}
+                    onClick={() => setCurrentType("forgot-password")}
                     className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
                   >
                     {loginData.forgotPasswordText}
+                  </motion.button>
+                </motion.div>
+              )}
+
+              {currentType === "forgot-password" && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.8 }}
+                  className="text-center mt-4"
+                >
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    onClick={() => setCurrentType("login")}
+                    className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
+                  >
+                    Voltar ao login
                   </motion.button>
                 </motion.div>
               )}
@@ -417,7 +529,7 @@ export default function AuthModal({
                 className="text-center mt-6 pt-6 border-t border-gray-700"
               >
                 <span className="text-gray-400">
-                  {type === "login"
+                  {currentType === "login"
                     ? loginData?.signupHintText
                     : registerData?.loginLinkText}
                 </span>
@@ -426,7 +538,7 @@ export default function AuthModal({
                   onClick={onSwitchMode}
                   className="ml-2 text-blue-400 hover:text-blue-300 font-medium transition-colors"
                 >
-                  {type === "login"
+                  {currentType === "login"
                     ? loginData?.signupLinkText
                     : registerData?.loginHintText}
                 </motion.button>
