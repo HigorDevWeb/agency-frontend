@@ -148,8 +148,8 @@ class AuthService {
         throw new Error("Email inválido");
       }
 
-      // Adicionar URL de confirmação personalizada
-      const confirmationUrl = `${window.location.origin}/auth/confirm`;
+      // Adicionar URL de confirmação personalizada (baseada na configuração do Strapi)
+      const confirmationUrl = `${window.location.origin}/login?confirmed=true`;
       
       const response = await fetch(`${this.baseURL}/api/auth/local/register`, {
         method: "POST",
@@ -164,9 +164,36 @@ class AuthService {
 
       if (!response.ok) {
         const errorData = await response.json();
-        const errorMessage = errorData.error?.message || 
-                           errorData.message?.[0]?.messages?.[0]?.message || 
-                           "Erro no registro";
+        
+        // Tratamento específico de erros do Strapi
+        let errorMessage = "Erro ao criar conta";
+        
+        if (errorData.error?.message) {
+          const strapiError = errorData.error.message.toLowerCase();
+          
+          // Erros específicos de validação
+          if (strapiError.includes("email") && strapiError.includes("taken")) {
+            errorMessage = "Este email já está sendo usado. Tente fazer login ou use outro email.";
+          } else if (strapiError.includes("username") && strapiError.includes("taken")) {
+            errorMessage = "Este nome de usuário já está sendo usado. Escolha outro nome.";
+          } else if (strapiError.includes("password") && strapiError.includes("short")) {
+            errorMessage = "A senha deve ter pelo menos 6 caracteres.";
+          } else if (strapiError.includes("email") && strapiError.includes("valid")) {
+            errorMessage = "Por favor, digite um email válido.";
+          } else if (strapiError.includes("username") && strapiError.includes("required")) {
+            errorMessage = "O nome é obrigatório.";
+          } else if (strapiError.includes("email") && strapiError.includes("required")) {
+            errorMessage = "O email é obrigatório.";
+          } else if (strapiError.includes("password") && strapiError.includes("required")) {
+            errorMessage = "A senha é obrigatória.";
+          } else {
+            // Usar a mensagem original do Strapi se não conseguirmos mapear
+            errorMessage = errorData.error.message;
+          }
+        } else if (errorData.message?.[0]?.messages?.[0]?.message) {
+          errorMessage = errorData.message[0].messages[0].message;
+        }
+        
         throw new Error(errorMessage);
       }
 
@@ -195,7 +222,22 @@ class AuthService {
 
       if (!response.ok) {
         const errorData = await response.json();
-        const errorMessage = errorData.error?.message || "Erro na confirmação do email";
+        
+        // Tratamento específico de erros de confirmação
+        let errorMessage = "Erro na confirmação do email";
+        
+        if (errorData.error?.message) {
+          const strapiError = errorData.error.message.toLowerCase();
+          
+          if (strapiError.includes("expired") || strapiError.includes("invalid")) {
+            errorMessage = "O link de confirmação expirou ou é inválido. Solicite um novo email de confirmação.";
+          } else if (strapiError.includes("already confirmed")) {
+            errorMessage = "Este email já foi confirmado anteriormente. Você pode fazer login normalmente.";
+          } else {
+            errorMessage = errorData.error.message;
+          }
+        }
+        
         throw new Error(errorMessage);
       }
 
@@ -216,7 +258,7 @@ class AuthService {
   // Reenviar email de confirmação
   async resendConfirmation(email: string): Promise<{ message: string }> {
     try {
-      const confirmationUrl = `${window.location.origin}/auth/confirm`;
+      const confirmationUrl = `${window.location.origin}/login?confirmed=true`;
       
       const response = await fetch(`${this.baseURL}/api/auth/send-email-confirmation`, {
         method: "POST",
@@ -263,9 +305,26 @@ class AuthService {
 
       if (!response.ok) {
         const errorData = await response.json();
-        const errorMessage = errorData.error?.message || 
-                           errorData.message?.[0]?.messages?.[0]?.message || 
-                           "Credenciais inválidas";
+        
+        // Tratamento específico de erros de login
+        let errorMessage = "Erro ao fazer login";
+        
+        if (errorData.error?.message) {
+          const strapiError = errorData.error.message.toLowerCase();
+          
+          if (strapiError.includes("invalid") || strapiError.includes("wrong")) {
+            errorMessage = "Email ou senha incorretos. Verifique suas credenciais e tente novamente.";
+          } else if (strapiError.includes("blocked")) {
+            errorMessage = "Sua conta foi bloqueada. Entre em contato com o suporte.";
+          } else if (strapiError.includes("confirmed") || strapiError.includes("confirm")) {
+            errorMessage = "Você precisa confirmar seu email antes de fazer login. Verifique sua caixa de entrada.";
+          } else {
+            errorMessage = errorData.error.message;
+          }
+        } else if (errorData.message?.[0]?.messages?.[0]?.message) {
+          errorMessage = errorData.message[0].messages[0].message;
+        }
+        
         throw new Error(errorMessage);
       }
 

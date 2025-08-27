@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const confirmationUrl = `${request.nextUrl.origin}/auth/confirm`;
+    const confirmationUrl = `${request.nextUrl.origin}/login?confirmed=true`;
 
     // Enviar requisição para o Strapi
       const strapiResponse = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/auth/send-email-confirmation`, {
