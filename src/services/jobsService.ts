@@ -15,6 +15,8 @@ export const getAllJobs = async (locale?: string): Promise<FrontCardJob[]> => {
   return data?.frontCardJob ?? [];
 };
 
+export { getJobListingPage };
+
 // Busca todos os inside cards
 export const getAllInsideJobs = async (locale?: string): Promise<InsideCardJob[]> => {
   const currentLocale = locale || getBrowserLocale();

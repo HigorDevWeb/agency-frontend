@@ -30,6 +30,10 @@ export interface InsideCardJob {
     AboutCompany: string;
     jobRequirements: string;
     jobbenefits: string;
+    labelDescription: string;
+    labelAboutCompany: string;
+    labelRequirements: string;
+    labelBenefits: string;
 }
 
 export interface JobListingPage {
@@ -42,6 +46,7 @@ export interface JobListingPage {
     featured_title: string;
     featured_subtitle: string;
     seeAllJobsButton: string;
+    labelVoltar: string;
     filters: Filter[];
     frontCardJob: FrontCardJob[];
     insideCardJob: InsideCardJob[];
@@ -55,7 +60,7 @@ export async function getJobListingPage(locale?: string): Promise<JobListingPage
         // Adicionar locale como parâmetro de consulta se fornecido
         const localeParam = locale ? `locale=${locale}&` : '';
         
-        const res = await fetch(`https://api.recruitings.info/api/job-listing-page?${localeParam}populate=*`, {
+        const res = await fetch(`https://api.recruitings.info/api/job-listing-page?${localeParam}populate[filters]=true&populate[frontCardJob]=true&populate[insideCardJob]=true`, {
             headers: { "Content-Type": "application/json" },
             // Se usar Next.js, ajuste cache/revalidate como preferir
             next: { revalidate: 60 },
