@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Verify webhook key for security (optional but recommended)
-    const expectedKey = process.env.N8N_WEBHOOK_KEY || "your-secret-webhook-key";
+    const expectedKey = process.env.N8N_WEBHOOK_URL|| "your-secret-webhook-key";
     if (webhookKey !== expectedKey) {
       return NextResponse.json(
         { error: 'Invalid webhook key' }, 
