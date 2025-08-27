@@ -28,6 +28,7 @@ interface AuthContextType {
   resetPassword: (code: string, password: string, passwordConfirmation: string) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
+  refreshProfile: () => Promise<void>;
   canApplyToJobs: () => boolean;
 }
 
@@ -46,12 +47,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Converter usuário do Strapi para formato local
   const convertStrapiUser = (strapiUser: StrapiUser): User => {
+    // Tratar avatar do Strapi
+    let avatarUrl = `https://ui-avatars.com/api/?name=${strapiUser.username}&background=3b82f6&color=fff`;
+    
+    if (strapiUser.avatar) {
+      // Se o avatar já é uma URL completa, usar como está
+      if (strapiUser.avatar.startsWith('http')) {
+        avatarUrl = strapiUser.avatar;
+      } else {
+        // Se é um caminho relativo, adicionar o domínio do Strapi
+        avatarUrl = `https://api.recruitings.info${strapiUser.avatar}`;
+      }
+    }
+
     return {
       id: strapiUser.id.toString(),
       name: strapiUser.username,
       email: strapiUser.email,
       userType: "developer", // Padrão, pode ser ajustado conforme sua lógica
-      avatar: `https://ui-avatars.com/api/?name=${strapiUser.username}&background=3b82f6&color=fff`,
+      avatar: avatarUrl,
     };
   };
 
@@ -65,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const localUser = convertStrapiUser(strapiUser);
             setUser(localUser);
           } else {
-            // Token existe mas usuário não, tentar obter perfil
+            // Token existe mas usuário não, tentar obter perfil atualizado do servidor
             try {
               const profile = await authService.getProfile();
               const localUser = convertStrapiUser(profile);
@@ -126,8 +140,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loginWithGoogle = () => {
+    setIsLoading(true);
     authService.loginWithGoogle();
   };
+
+  // Função interna para atualizar o usuário (usado apenas pelos callbacks)
+  const handleGoogleAuthSuccess = (userData: StrapiUser) => {
+    const localUser = convertStrapiUser(userData);
+    setUser(localUser);
+    setIsLoading(false);
+  };
+
+  // Expor função para componentes de callback
+  if (typeof window !== 'undefined') {
+    (window as unknown as { handleGoogleAuthSuccess?: (userData: StrapiUser) => void }).handleGoogleAuthSuccess = handleGoogleAuthSuccess;
+  }
 
   const forgotPassword = async (email: string) => {
     try {
@@ -145,19 +172,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = async (data: Partial<User>) => {
     if (!user) return;
 
-    setIsLoading(true);
-
     try {
-      // Atualizar perfil local
-      const updatedUser = { ...user, ...data };
+      // Preparar dados para o Strapi
+      const updateData: { username?: string; email?: string; avatar?: string } = {};
+      
+      if (data.name) updateData.username = data.name;
+      if (data.email) updateData.email = data.email;
+      if (data.avatar) updateData.avatar = data.avatar;
+
+      // Atualizar no Strapi
+      const updatedStrapiUser = await authService.updateProfile(updateData);
+      
+      // Converter e atualizar estado local
+      const updatedUser = convertStrapiUser(updatedStrapiUser);
       setUser(updatedUser);
 
-      // Aqui você pode implementar a chamada para atualizar no Strapi se necessário
-      // await authService.updateProfile(data);
     } catch (error) {
+      console.error("Erro ao atualizar perfil:", error);
       throw new Error("Erro ao atualizar perfil", { cause: error });
-    } finally {
-      setIsLoading(false);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (!authService.isAuthenticated()) return;
+
+    try {
+      const profile = await authService.getProfile();
+      const localUser = convertStrapiUser(profile);
+      setUser(localUser);
+    } catch (error) {
+      console.error("Erro ao recarregar perfil:", error);
+      throw new Error("Erro ao recarregar perfil", { cause: error });
     }
   };
 
@@ -185,6 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword,
     logout,
     updateProfile,
+    refreshProfile,
     canApplyToJobs,
   };
 

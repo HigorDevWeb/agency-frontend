@@ -4,8 +4,37 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";          // evita limite de upload do Edge
 export const dynamic = "force-dynamic";   // garante execução no server
 
+// Mock database for applications (in production, use real database)
+const applications: Array<{
+  id: string;
+  userId: string;
+  jobId: string;
+  jobTitle: string;
+  companyName: string;
+  appliedAt: string;
+  status: string;
+  statusMessage: string;
+  cvFileName?: string;
+  userInfo: {
+    name: string;
+    email: string;
+    phone?: string;
+  };
+  timeline: Array<{
+    id: string;
+    status: string;
+    message: string;
+    timestamp: string;
+    isSystemGenerated: boolean;
+  }>;
+}> = [];
+
 function ensureString(v: FormDataEntryValue | null) {
     return typeof v === "string" ? v.trim() : "";
+}
+
+function generateId() {
+    return `app-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
 export async function POST(req: Request) {
@@ -61,6 +90,40 @@ export async function POST(req: Request) {
             );
         }
 
+        // 6) Salva a candidatura no "banco de dados" antes de enviar para N8N
+        const applicationId = generateId();
+        const application = {
+            id: applicationId,
+            userId: "user-1", // In production, get from JWT token
+            jobId,
+            jobTitle: jobTitle || `Vaga ${jobId}`,
+            companyName: "Tech Company",
+            appliedAt: new Date().toISOString(),
+            status: "pending",
+            statusMessage: "Candidatura recebida. Aguardando análise...",
+            cvFileName: (file as File)?.name,
+            userInfo: {
+                name,
+                email,
+                phone
+            },
+            timeline: [
+                {
+                    id: `t-${Date.now()}`,
+                    status: "pending",
+                    message: "Candidatura enviada com sucesso",
+                    timestamp: new Date().toISOString(),
+                    isSystemGenerated: true
+                }
+            ]
+        };
+
+        // Adiciona ao mock database
+        applications.push(application);
+
+        // 7) Adiciona o applicationId ao payload para o N8N
+        payload.append("applicationId", applicationId);
+
         const res = await fetch(url, {
             method: "POST",
             body: payload,
@@ -89,7 +152,11 @@ export async function POST(req: Request) {
             }
 
             return NextResponse.json(
-                { ok: true, message: getError(json) || "Candidatura recebida" },
+                { 
+                    ok: true, 
+                    message: getError(json) || "Candidatura recebida",
+                    applicationId: applicationId
+                },
                 { status: 200 },
             );
     } catch {

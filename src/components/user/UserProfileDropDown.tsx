@@ -3,10 +3,12 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 export default function UserProfileDropdown() {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -27,18 +29,22 @@ export default function UserProfileDropdown() {
   if (!user) return null;
 
   const menuItems = [
-    { icon: "👤", label: "Meu Perfil", action: () => console.log("Perfil") },
+    { 
+      icon: "👤", 
+      label: "Meu Perfil", 
+      action: () => {
+        router.push("/profile");
+        setIsOpen(false);
+      }
+    },
     {
       icon: "💼",
       label: "Minhas Candidaturas",
-      action: () => console.log("Candidaturas"),
-    },
-    {
-      icon: "⚡",
-      label: "Configurações",
-      action: () => console.log("Configurações"),
-    },
-    { icon: "📊", label: "Dashboard", action: () => console.log("Dashboard") },
+      action: () => {
+        router.push("/applications");
+        setIsOpen(false);
+      }
+    }
   ];
 
   return (
@@ -131,7 +137,6 @@ export default function UserProfileDropdown() {
                   }}
                   onClick={() => {
                     item.action();
-                    setIsOpen(false);
                   }}
                   className="w-full flex items-center space-x-3 px-4 py-3 text-left text-gray-300 hover:text-white transition-all duration-200"
                 >
