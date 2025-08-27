@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 export default function ConfirmedPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { confirmEmail, user, isLoading } = useAuth();
+  const { confirmEmail } = useAuth();
   const [status, setStatus] = useState<'loading'|'success'|'error'>('loading');
   const [message, setMessage] = useState('Confirmando email...');
 
