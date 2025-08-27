@@ -77,6 +77,7 @@ export default function JobDetailPage() {
   };
 
   const handleOpenAuth = () => {
+    setShowApplyModal(false); // Fechar apply modal se estiver aberto
     setShowAuthModal(true);
     setAuthModalType("login");
   };

@@ -20,7 +20,7 @@ type Props = {
 
 export default function ApplyModal({ open, onClose, job, onOpenAuth }: Props) {
     const { language } = useLanguage();
-    const { user, canApplyToJobs } = useAuth();
+    const { canApplyToJobs } = useAuth();
     const [file, setFile] = useState<File | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [msg, setMsg] = useState<string | null>(null);
@@ -45,32 +45,12 @@ export default function ApplyModal({ open, onClose, job, onOpenAuth }: Props) {
 
     // Check if user can apply to jobs
     if (!canApplyToJobs()) {
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white p-8 rounded-lg max-w-md w-full mx-4 text-center">
-                    <h2 className="text-2xl font-bold mb-4 text-gray-800">
-                        Acesso Restrito
-                    </h2>
-                    <p className="text-gray-600 mb-6">
-                        Você precisa estar logado para se candidatar a vagas.
-                    </p>
-                    <div className="flex gap-4 justify-center">
-                        <button
-                            onClick={onOpenAuth}
-                            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                            Fazer Login
-                        </button>
-                        <button
-                            onClick={onClose}
-                            className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 transition-colors"
-                        >
-                            Cancelar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
+        // Close the apply modal and open auth modal directly
+        onClose();
+        if (onOpenAuth) {
+            onOpenAuth();
+        }
+        return null;
     }
 
     function onDrop(ev: DragEvent<HTMLLabelElement>) {

@@ -156,7 +156,9 @@ class AuthService {
   // Login com Google (redirecionamento)
   loginWithGoogle(): void {
     const locale = getBrowserLocale();
-    window.location.href = `${this.baseURL}/api/connect/google?locale=${locale}`;
+    // Adicionando o redirect_uri explicitamente para resolver o mismatch
+    const redirectUri = encodeURIComponent('https://api.recruitings.info/api/connect/google/callback');
+    window.location.href = `${this.baseURL}/api/connect/google?locale=${locale}&redirect_uri=${redirectUri}`;
   }
 
   // Processar callback do Google (para quando o usuário volta do Google)

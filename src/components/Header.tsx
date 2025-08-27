@@ -2,7 +2,8 @@
 "use client";
 
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import AuthModal from "./auth/AuthModal";
 import UserProfileDropdown from "./user/UserProfileDropDown";
@@ -11,9 +12,10 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { getHeaderInfo, HeaderInfo } from "@/lib/header-info/getHeaderInfo";
 
-export default function Header() {
+function HeaderContent() {
   const { user, logout } = useAuth();
   const { language } = useLanguage();
+  const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [headerData, setHeaderData] = useState<HeaderInfo | null>(null);
@@ -27,6 +29,14 @@ export default function Header() {
 
   const { scrollY } = useScroll();
   const opacity = useTransform(scrollY, [0, 100], [0.9, 1]);
+
+  // Effect to open login modal when user comes from reset password
+  useEffect(() => {
+    const loginParam = searchParams.get('login');
+    if (loginParam === 'true') {
+      setAuthModal({ isOpen: true, type: "login" });
+    }
+  }, [searchParams]);
 
   // Effect to handle scroll state
   useEffect(() => {
@@ -366,5 +376,25 @@ export default function Header() {
         onSwitchMode={switchAuthMode}
       />
     </>
+  );
+}
+
+export default function Header() {
+  return (
+    <Suspense fallback={
+      <div className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="w-32 h-8 bg-gray-700 rounded animate-pulse"></div>
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-8 bg-gray-700 rounded animate-pulse"></div>
+              <div className="w-20 h-8 bg-gray-700 rounded animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <HeaderContent />
+    </Suspense>
   );
 }

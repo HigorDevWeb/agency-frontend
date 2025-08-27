@@ -120,8 +120,9 @@ export default function AuthModal({
           onSwitchMode(); // Volta para login
         }, 3000);
       }
-    } catch (err: any) {
-      setError(err.message || "Erro inesperado");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro inesperado";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

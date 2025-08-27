@@ -25,6 +25,7 @@ interface AuthContextType {
   register: (userData: RegisterData) => Promise<void>;
   loginWithGoogle: () => void;
   forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (code: string, password: string, passwordConfirmation: string) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
   canApplyToJobs: () => boolean;
@@ -69,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const profile = await authService.getProfile();
               const localUser = convertStrapiUser(profile);
               setUser(localUser);
-            } catch (error) {
+            } catch {
               // Token inválido, fazer logout
               authService.logout();
             }
@@ -164,6 +165,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authService.canApplyToJobs();
   };
 
+  const resetPassword = async (code: string, password: string, passwordConfirmation: string) => {
+    try {
+      await authService.resetPassword(code, password, passwordConfirmation);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Erro ao redefinir senha";
+      throw new Error(errorMessage);
+    }
+  };
+
   const value = {
     user,
     isLoading,
@@ -172,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     register,
     loginWithGoogle,
     forgotPassword,
+    resetPassword,
     logout,
     updateProfile,
     canApplyToJobs,
