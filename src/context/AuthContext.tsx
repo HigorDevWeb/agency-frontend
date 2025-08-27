@@ -132,6 +132,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       const response = await authService.register(registerData);
+      
+      // NÃO fazer login automático - usuário precisa confirmar email primeiro
+      // setUser será chamado apenas após confirmação do email
+      
       return response;
     } catch (error) {
       throw new Error("Erro ao criar conta", { cause: error });

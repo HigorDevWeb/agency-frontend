@@ -20,10 +20,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const confirmationUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/confirm`;
+    const confirmationUrl = `${request.nextUrl.origin}/auth/confirm`;
 
     // Enviar requisição para o Strapi
-    const strapiResponse = await fetch(`${process.env.STRAPI_API_URL}/api/auth/send-email-confirmation`, {
+      const strapiResponse = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/auth/send-email-confirmation`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

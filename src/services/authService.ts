@@ -171,10 +171,10 @@ class AuthService {
       }
 
       // Com confirmação por email, o Strapi não retorna JWT imediatamente
-      // Retornamos uma mensagem de sucesso informando sobre o email
+      // O usuário precisa confirmar o email primeiro antes de fazer login
       console.log('✅ Registro iniciado - Email de confirmação enviado');
       return {
-        message: "Conta criada com sucesso! Verifique seu email para confirmar sua conta.",
+        message: "Foi enviado um email de confirmação para você. Para continuar com o seu cadastro, primeiro confirme no email que foi enviado para você. Só depois disso você conseguirá acesso à sua conta.",
         email: data.email
       };
     } catch (error) {
@@ -271,7 +271,12 @@ class AuthService {
 
       const authData: AuthResponse = await response.json();
       
-      // Salvar token e usuário no localStorage
+      // Verificar se o usuário confirmou o email
+      if (!authData.user.confirmed) {
+        throw new Error("Você precisa confirmar seu email antes de fazer login. Verifique sua caixa de entrada e clique no link de confirmação.");
+      }
+      
+      // Salvar token e usuário no localStorage apenas se confirmado
       this.setToken(authData.jwt);
       this.setUser(authData.user);
 
