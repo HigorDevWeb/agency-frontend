@@ -7,7 +7,7 @@ import {
   useEffect,
   ReactNode,
 } from "react";
-import authService, { User as StrapiUser, RegisterData as StrapiRegisterData, LoginData } from "@/services/authService";
+import authService, { User as StrapiUser, RegisterData as StrapiRegisterData, LoginData, RegisterResponse } from "@/services/authService";
 
 interface User {
   id: string;
@@ -22,10 +22,12 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
+  register: (userData: RegisterData) => Promise<RegisterResponse>;
   loginWithGoogle: () => void;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (code: string, password: string, passwordConfirmation: string) => Promise<void>;
+  confirmEmail: (token: string) => Promise<void>;
+  resendConfirmation: (email: string) => Promise<{ message: string }>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -119,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (userData: RegisterData) => {
+  const register = async (userData: RegisterData): Promise<RegisterResponse> => {
     setIsLoading(true);
 
     try {
@@ -129,9 +131,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password: userData.password,
       };
 
-      const authResponse = await authService.register(registerData);
-      const localUser = convertStrapiUser(authResponse.user);
-      setUser(localUser);
+      const response = await authService.register(registerData);
+      
+      // NÃO fazer login automático - usuário precisa confirmar email primeiro
+      // setUser será chamado apenas após confirmação do email
+      
+      return response;
     } catch (error) {
       throw new Error("Erro ao criar conta", { cause: error });
     } finally {
@@ -210,6 +215,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authService.canApplyToJobs();
   };
 
+  const confirmEmail = async (token: string) => {
+    setIsLoading(true);
+    try {
+      const authResponse = await authService.confirmEmail(token);
+      const localUser = convertStrapiUser(authResponse.user);
+      setUser(localUser);
+    } catch (error) {
+      throw new Error("Erro ao confirmar email", { cause: error });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resendConfirmation = async (email: string): Promise<{ message: string }> => {
+    try {
+      return await authService.resendConfirmation(email);
+    } catch (error) {
+      throw new Error("Erro ao reenviar confirmação", { cause: error });
+    }
+  };
+
   const resetPassword = async (code: string, password: string, passwordConfirmation: string) => {
     try {
       await authService.resetPassword(code, password, passwordConfirmation);
@@ -228,6 +254,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginWithGoogle,
     forgotPassword,
     resetPassword,
+    confirmEmail,
+    resendConfirmation,
     logout,
     updateProfile,
     refreshProfile,

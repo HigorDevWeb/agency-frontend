@@ -14,6 +14,11 @@ export interface User {
   avatar?: string;
 }
 
+export interface RegisterResponse {
+  message: string;
+  email: string;
+}
+
 export interface AuthResponse {
   jwt: string;
   user: User;
@@ -126,8 +131,8 @@ class AuthService {
     };
   }
 
-  // Registro tradicional (email/senha)
-  async register(data: RegisterData): Promise<AuthResponse> {
+  // Registro com confirmação por email
+  async register(data: RegisterData): Promise<{ message: string; email: string }> {
     try {
       // Validações básicas
       if (!data.email || !data.password || !data.username) {
@@ -143,32 +148,139 @@ class AuthService {
         throw new Error("Email inválido");
       }
 
+      // No Strapi 5, não enviamos confirmationUrl no body
+      // A URL de confirmação deve ser configurada no Strapi Admin Panel
+      // Mas vamos adicionar headers para garantir que o Strapi use a URL correta
       const response = await fetch(`${this.baseURL}/api/auth/local/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Origin": process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin,
+          "Referer": process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin,
         },
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        const errorMessage = errorData.error?.message || 
-                           errorData.message?.[0]?.messages?.[0]?.message || 
-                           "Erro no registro";
+        
+        // Tratamento específico de erros do Strapi
+        let errorMessage = "Erro ao criar conta";
+        
+        if (errorData.error?.message) {
+          const strapiError = errorData.error.message.toLowerCase();
+          
+          // Erros específicos de validação
+          if (strapiError.includes("email") && strapiError.includes("taken")) {
+            errorMessage = "Este email já está sendo usado. Tente fazer login ou use outro email.";
+          } else if (strapiError.includes("username") && strapiError.includes("taken")) {
+            errorMessage = "Este nome de usuário já está sendo usado. Escolha outro nome.";
+          } else if (strapiError.includes("password") && strapiError.includes("short")) {
+            errorMessage = "A senha deve ter pelo menos 6 caracteres.";
+          } else if (strapiError.includes("email") && strapiError.includes("valid")) {
+            errorMessage = "Por favor, digite um email válido.";
+          } else if (strapiError.includes("username") && strapiError.includes("required")) {
+            errorMessage = "O nome é obrigatório.";
+          } else if (strapiError.includes("email") && strapiError.includes("required")) {
+            errorMessage = "O email é obrigatório.";
+          } else if (strapiError.includes("password") && strapiError.includes("required")) {
+            errorMessage = "A senha é obrigatória.";
+          } else {
+            // Usar a mensagem original do Strapi se não conseguirmos mapear
+            errorMessage = errorData.error.message;
+          }
+        } else if (errorData.message?.[0]?.messages?.[0]?.message) {
+          errorMessage = errorData.message[0].messages[0].message;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      // Com confirmação por email, o Strapi não retorna JWT imediatamente
+      // O usuário precisa confirmar o email primeiro antes de fazer login
+      console.log('✅ Registro iniciado - Email de confirmação enviado');
+      return {
+        message: "Foi enviado um email de confirmação para você. Para continuar com o seu cadastro, primeiro confirme no email que foi enviado para você. Só depois disso você conseguirá acesso à sua conta.",
+        email: data.email
+      };
+    } catch (error) {
+      console.error("❌ Erro no registro:", error);
+      throw error;
+    }
+  }
+
+  // Confirmar email após registro
+  async confirmEmail(confirmationToken: string): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${process.env.NEXTAUTH_URL}/api/auth/email-confirmation?confirmation=${confirmationToken}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        
+        // Tratamento específico de erros de confirmação
+        let errorMessage = "Erro na confirmação do email";
+        
+        if (errorData.error?.message) {
+          const strapiError = errorData.error.message.toLowerCase();
+          
+          if (strapiError.includes("expired") || strapiError.includes("invalid")) {
+            errorMessage = "O link de confirmação expirou ou é inválido. Solicite um novo email de confirmação.";
+          } else if (strapiError.includes("already confirmed")) {
+            errorMessage = "Este email já foi confirmado anteriormente. Você pode fazer login normalmente.";
+          } else {
+            errorMessage = errorData.error.message;
+          }
+        }
+        
         throw new Error(errorMessage);
       }
 
       const authData: AuthResponse = await response.json();
       
-      // Salvar token e usuário no localStorage
+      // Salvar token e usuário no localStorage após confirmação
       this.setToken(authData.jwt);
       this.setUser(authData.user);
 
-      console.log('✅ Registro realizado com sucesso');
+      console.log('✅ Email confirmado com sucesso');
       return authData;
     } catch (error) {
-      console.error("❌ Erro no registro:", error);
+      console.error("❌ Erro na confirmação do email:", error);
+      throw error;
+    }
+  }
+
+  // Reenviar email de confirmação
+  async resendConfirmation(email: string): Promise<{ message: string }> {
+    try {
+      const response = await fetch(`${this.baseURL}/api/auth/send-email-confirmation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Origin": process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin,
+          "Referer": process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin,
+        },
+        body: JSON.stringify({
+          email
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        const errorMessage = errorData.error?.message || "Erro ao reenviar email de confirmação";
+        throw new Error(errorMessage);
+      }
+
+      console.log('✅ Email de confirmação reenviado');
+      return {
+        message: "Email de confirmação reenviado com sucesso!"
+      };
+    } catch (error) {
+      console.error("❌ Erro ao reenviar confirmação:", error);
       throw error;
     }
   }
@@ -191,15 +303,37 @@ class AuthService {
 
       if (!response.ok) {
         const errorData = await response.json();
-        const errorMessage = errorData.error?.message || 
-                           errorData.message?.[0]?.messages?.[0]?.message || 
-                           "Credenciais inválidas";
+        
+        // Tratamento específico de erros de login
+        let errorMessage = "Erro ao fazer login";
+        
+        if (errorData.error?.message) {
+          const strapiError = errorData.error.message.toLowerCase();
+          
+          if (strapiError.includes("invalid") || strapiError.includes("wrong")) {
+            errorMessage = "Email ou senha incorretos. Verifique suas credenciais e tente novamente.";
+          } else if (strapiError.includes("blocked")) {
+            errorMessage = "Sua conta foi bloqueada. Entre em contato com o suporte.";
+          } else if (strapiError.includes("confirmed") || strapiError.includes("confirm")) {
+            errorMessage = "Você precisa confirmar seu email antes de fazer login. Verifique sua caixa de entrada.";
+          } else {
+            errorMessage = errorData.error.message;
+          }
+        } else if (errorData.message?.[0]?.messages?.[0]?.message) {
+          errorMessage = errorData.message[0].messages[0].message;
+        }
+        
         throw new Error(errorMessage);
       }
 
       const authData: AuthResponse = await response.json();
       
-      // Salvar token e usuário no localStorage
+      // Verificar se o usuário confirmou o email
+      if (!authData.user.confirmed) {
+        throw new Error("Você precisa confirmar seu email antes de fazer login. Verifique sua caixa de entrada e clique no link de confirmação.");
+      }
+      
+      // Salvar token e usuário no localStorage apenas se confirmado
       this.setToken(authData.jwt);
       this.setUser(authData.user);
 

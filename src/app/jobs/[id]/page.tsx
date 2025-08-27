@@ -6,8 +6,6 @@ import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   MapPin,
-  Users,
-  Calendar,
 } from "lucide-react";
 import { getInsideJobById, getJobListingPage } from "@/services/jobsService";
 import ApplyModal from "@/components/ApplyModal";
@@ -124,13 +122,6 @@ export default function JobDetailPage() {
     );
   }
 
-  // Helpers para extrair dados da string "AboutCompany"
-  const [size, founded, industry] = job.AboutCompany
-    ? job.AboutCompany.replace("Sobre a Empresa", "")
-      .split("\n")
-      .filter(Boolean)
-    : ["", "", ""];
-
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -197,30 +188,12 @@ export default function JobDetailPage() {
             </div>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-2">
+          <div className="mb-8">
             <div>
               <h3 className="text-2xl font-bold mb-4 text-blue-400">
                 {job.labelDescription}
               </h3>
               <p className="text-gray-300 leading-relaxed">{job.JobDescription}</p>
-            </div>
-            <div>
-              <h3 className="text-2xl font-bold mb-4 text-blue-400">
-                {job.labelAboutCompany}
-              </h3>
-              <div className="space-y-2 text-gray-300">
-                <div className="flex items-center gap-2">
-                  <Users size={16} />
-                  {size || "N/A"}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar size={16} />
-                  {founded ? founded : "N/A"}
-                </div>
-                <p className="text-sm text-gray-400">
-                  {industry || "N/A"}
-                </p>
-              </div>
             </div>
           </div>
 
