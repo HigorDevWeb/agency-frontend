@@ -24,6 +24,7 @@ export default function ApplyModal({ open, onClose, job, onOpenAuth }: Props) {
     const [file, setFile] = useState<File | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [msg, setMsg] = useState<string | null>(null);
+    const [isSuccess, setIsSuccess] = useState(false);
     const [modalContent, setModalContent] = useState<ApplyModalContent | null>(null);
 
     useEffect(() => {
@@ -87,11 +88,21 @@ export default function ApplyModal({ open, onClose, job, onOpenAuth }: Props) {
         };
         if (!res.ok) {
             setMsg(getError(payload) ?? "Não foi possível enviar sua candidatura.");
+            setIsSuccess(false);
             return;
         }
-        setMsg(getError(payload) ?? "Candidatura enviada com sucesso!");
+        
+        // Mensagem personalizada de sucesso
+        const companyName = job.title ? `da ${job.title}` : "da empresa";
+        setMsg(`Candidatura enviada com sucesso! A empresa ${companyName} entrará em contato com você em alguns minutos.`);
+        setIsSuccess(true);
         form.reset();
         setFile(null);
+        
+        // Fechar o modal após 3 segundos
+        setTimeout(() => {
+            onClose();
+        }, 3000);
     }
 
     return (
@@ -161,7 +172,21 @@ export default function ApplyModal({ open, onClose, job, onOpenAuth }: Props) {
                             : (modalContent?.botaoCadastrar || "Cadastrar")}
                     </button>
 
-                    {msg && <p className="text-center text-sm text-gray-200">{msg}</p>}
+                    {msg && (
+                        <div className={`mt-4 p-4 rounded-lg text-center text-sm ${
+                            isSuccess 
+                                ? 'bg-green-500/20 border border-green-500/30 text-green-300' 
+                                : 'bg-red-500/20 border border-red-500/30 text-red-300'
+                        }`}>
+                            <p>{msg}</p>
+                            {isSuccess && (
+                                <div className="mt-2 flex items-center justify-center">
+                                    <div className="w-4 h-4 border-2 border-green-300 border-t-transparent rounded-full animate-spin"></div>
+                                    <span className="ml-2 text-xs text-green-400">Fechando automaticamente...</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </form>
             </div>
         </div>

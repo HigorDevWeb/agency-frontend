@@ -106,7 +106,7 @@ export default function AuthModal({
           name: formData.name,
           email: formData.email,
           password: formData.password,
-          userType: formData.userType as "developer" | "company",
+          userType: "developer", // Sempre developer como padrão
         });
         onClose();
       } else if (currentType === "forgot-password") {
@@ -410,41 +410,22 @@ export default function AuthModal({
                 )}
 
                 {currentType === "register" && registerData && (
-                  <>
-                    <motion.div
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.8 }}
-                    >
-                      <motion.input
-                        whileFocus={{ scale: 1.02, borderColor: "#3b82f6" }}
-                        type="password"
-                        name="confirmPassword"
-                        placeholder={registerData.confirmPasswordPlaceholder}
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
-                        required
-                      />
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.9 }}
-                    >
-                      <motion.select
-                        whileFocus={{ scale: 1.02, borderColor: "#3b82f6" }}
-                        name="userType"
-                        value={formData.userType}
-                        onChange={handleChange}
-                        className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
-                      >
-                        <option value="developer">{registerData.roleSelectPlaceholder}</option>
-                        <option value="company">Empresa</option>
-                      </motion.select>
-                    </motion.div>
-                  </>
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.8 }}
+                  >
+                    <motion.input
+                      whileFocus={{ scale: 1.02, borderColor: "#3b82f6" }}
+                      type="password"
+                      name="confirmPassword"
+                      placeholder={registerData.confirmPasswordPlaceholder}
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      className="w-full p-4 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+                      required
+                    />
+                  </motion.div>
                 )}
 
                 <motion.button
