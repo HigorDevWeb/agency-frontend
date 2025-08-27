@@ -150,10 +150,13 @@ class AuthService {
 
       // No Strapi 5, não enviamos confirmationUrl no body
       // A URL de confirmação deve ser configurada no Strapi Admin Panel
+      // Mas vamos adicionar headers para garantir que o Strapi use a URL correta
       const response = await fetch(`${this.baseURL}/api/auth/local/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Origin": process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin,
+          "Referer": process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin,
         },
         body: JSON.stringify(data),
       });
@@ -209,7 +212,7 @@ class AuthService {
   // Confirmar email após registro
   async confirmEmail(confirmationToken: string): Promise<AuthResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/api/auth/email-confirmation?confirmation=${confirmationToken}`, {
+      const response = await fetch(`${process.env.NEXTAUTH_URL}/api/auth/email-confirmation?confirmation=${confirmationToken}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -258,6 +261,8 @@ class AuthService {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Origin": process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin,
+          "Referer": process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin,
         },
         body: JSON.stringify({
           email
