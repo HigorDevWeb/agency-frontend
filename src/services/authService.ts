@@ -92,17 +92,17 @@ class AuthService {
   isAuthenticated(): boolean {
     const token = this.getToken();
     const user = this.getUser();
-    
+
     // Verificar se token e usuário existem e se token não expirou
     if (!token || !user) {
       return false;
     }
-    
+
     // Verificar se o token JWT não expirou (básico)
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const now = Date.now() / 1000;
-      
+
       if (payload.exp && payload.exp < now) {
         console.log('🔑 Token expirado, removendo...');
         this.removeToken();
@@ -113,7 +113,7 @@ class AuthService {
       this.removeToken();
       return false;
     }
-    
+
     return true;
   }
 
@@ -133,11 +133,11 @@ class AuthService {
       if (!data.email || !data.password || !data.username) {
         throw new Error("Todos os campos são obrigatórios");
       }
-      
+
       if (data.password.length < 6) {
         throw new Error("A senha deve ter pelo menos 6 caracteres");
       }
-      
+
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(data.email)) {
         throw new Error("Email inválido");
@@ -153,13 +153,13 @@ class AuthService {
 
       if (!response.ok) {
         const errorData = await response.json();
-        
+
         // Tratamento específico de erros do Strapi
         let errorMessage = "Erro ao criar conta";
-        
+
         if (errorData.error?.message) {
           const strapiError = errorData.error.message.toLowerCase();
-          
+
           // Erros específicos de validação
           if (strapiError.includes("email") && strapiError.includes("taken")) {
             errorMessage = "Este email já está sendo usado. Tente fazer login ou use outro email.";
@@ -182,12 +182,12 @@ class AuthService {
         } else if (errorData.message?.[0]?.messages?.[0]?.message) {
           errorMessage = errorData.message[0].messages[0].message;
         }
-        
+
         throw new Error(errorMessage);
       }
 
       const authData: AuthResponse = await response.json();
-      
+
       // Salvar token e usuário no localStorage
       this.setToken(authData.jwt);
       this.setUser(authData.user);
@@ -218,13 +218,13 @@ class AuthService {
 
       if (!response.ok) {
         const errorData = await response.json();
-        
+
         // Tratamento específico de erros de login
         let errorMessage = "Erro ao fazer login";
-        
+
         if (errorData.error?.message) {
           const strapiError = errorData.error.message.toLowerCase();
-          
+
           if (strapiError.includes("invalid") || strapiError.includes("wrong")) {
             errorMessage = "Email ou senha incorretos. Verifique suas credenciais e tente novamente.";
           } else if (strapiError.includes("blocked")) {
@@ -237,17 +237,17 @@ class AuthService {
         } else if (errorData.message?.[0]?.messages?.[0]?.message) {
           errorMessage = errorData.message[0].messages[0].message;
         }
-        
+
         throw new Error(errorMessage);
       }
 
       const authData: AuthResponse = await response.json();
-      
+
       // Verificar se o usuário confirmou o email
       if (!authData.user.confirmed) {
         throw new Error("Você precisa confirmar seu email antes de fazer login. Verifique sua caixa de entrada e clique no link de confirmação.");
       }
-      
+
       // Salvar token e usuário no localStorage apenas se confirmado
       this.setToken(authData.jwt);
       this.setUser(authData.user);
@@ -261,18 +261,51 @@ class AuthService {
   }
 
   // Login com Google (redirecionamento)
-  loginWithGoogle(): void {
-    // URL para onde o usuário será redirecionado após o login com Google (seu frontend)
-    const redirectUrl = `${window.location.origin}/connect/google/redirect`;
-    
-    // Construir URL de autenticação do Strapi (sem locale conforme solicitado)
+  loginWithGoogle(redirectPath: string = "/connect/google/redirect"): void {
+    // URL do FRONTEND para receber o retorno do Strapi
+    const origin =
+      typeof window !== "undefined" && window.location?.origin
+        ? window.location.origin
+        : "";
+
+    const redirectUrl = `${origin}${redirectPath}`;
+
+    // Endpoint do STRAPI que inicia o login social
     const authUrl = `${this.baseURL}/api/connect/google?redirect=${encodeURIComponent(redirectUrl)}`;
-    
-    console.log('🔗 Redirecionando para Google OAuth:', authUrl);
-    console.log('🎯 URL de callback configurada:', redirectUrl);
-    
-    // Redirecionar para o endpoint de autenticação do Strapi
-    window.location.href = authUrl;
+
+    console.log("🔗 Redirecionando para Google OAuth:", authUrl);
+    console.log("🎯 URL de callback configurada:", redirectUrl);
+
+    if (typeof window !== "undefined") {
+      window.location.href = authUrl;
+    }
+  }
+
+  /**
+   * Troca o access_token retornado na rota de redirect pelo JWT do Strapi.
+   * Use este método na sua página /connect/google/redirect, se preferir centralizar a lógica aqui.
+   */
+  async exchangeGoogleAccessToken(accessToken: string): Promise<AuthResponse> {
+    const url = `${this.baseURL}/api/auth/google/callback?access_token=${encodeURIComponent(accessToken)}`;
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Erro ao obter JWT do Strapi (${res.status}): ${text}`);
+    }
+
+    const data: AuthResponse = await res.json();
+
+    // Persistir auth localmente (em produção, prefira cookie httpOnly via rota API)
+    this.setToken(data.jwt);
+    this.setUser(data.user);
+
+    return data;
   }
 
   // Processar callback do Google - REMOVIDO (não é mais necessário)
@@ -322,7 +355,7 @@ class AuthService {
       }
 
       const authData: AuthResponse = await response.json();
-      
+
       // Salvar token e usuário no localStorage
       this.setToken(authData.jwt);
       this.setUser(authData.user);
@@ -349,7 +382,7 @@ class AuthService {
       }
 
       const authData: AuthResponse = await response.json();
-      
+
       // Atualizar token e usuário no localStorage
       this.setToken(authData.jwt);
       this.setUser(authData.user);
@@ -385,7 +418,7 @@ class AuthService {
 
       const user: User = await response.json();
       this.setUser(user);
-      
+
       return user;
     } catch (error) {
       console.error("Erro ao obter perfil:", error);
@@ -397,7 +430,7 @@ class AuthService {
   async uploadFile(file: File): Promise<{ id: number; url: string }> {
     const token = this.getToken();
     const currentUser = this.getUser();
-    
+
     if (!token || !currentUser) {
       throw new Error("Token de autenticação ou usuário não encontrado");
     }
@@ -410,7 +443,7 @@ class AuthService {
     try {
       const formData = new FormData();
       formData.append('files', file);
-      
+
       // Adicionar parâmetros para associar ao usuário
       formData.append('refId', currentUser.id.toString());
       formData.append('ref', 'plugin::users-permissions.user');
@@ -433,7 +466,7 @@ class AuthService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("❌ Erro na resposta:", errorText);
-        
+
         let errorMessage = "Erro ao fazer upload da imagem";
         try {
           const errorData = JSON.parse(errorText);
@@ -442,13 +475,13 @@ class AuthService {
           // Se não conseguir fazer parse do JSON, usar o texto como está
           errorMessage = errorText || errorMessage;
         }
-        
+
         throw new Error(errorMessage);
       }
 
       const uploadData = await response.json();
       console.log("✅ Upload bem-sucedido:", uploadData);
-      
+
       const uploadedFile = uploadData[0]; // Strapi retorna array
 
       return {
@@ -465,7 +498,7 @@ class AuthService {
   async updateProfile(data: UpdateProfileData): Promise<User> {
     const token = this.getToken();
     const currentUser = this.getUser();
-    
+
     if (!token || !currentUser) {
       throw new Error("Usuário não autenticado");
     }
@@ -475,10 +508,10 @@ class AuthService {
 
     try {
       const updateData: Record<string, unknown> = {};
-      
+
       if (data.username) updateData.username = data.username;
       if (data.email) updateData.email = data.email;
-      
+
       // Se tem avatar, pode ser ID do arquivo ou URL completa
       if (data.avatar) {
         // Se é uma URL completa, extrair apenas o ID do arquivo
@@ -507,7 +540,7 @@ class AuthService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("❌ Erro na atualização:", errorText);
-        
+
         let errorMessage = "Erro ao atualizar perfil";
         try {
           const errorData = JSON.parse(errorText);
@@ -515,15 +548,15 @@ class AuthService {
         } catch {
           errorMessage = errorText || errorMessage;
         }
-        
+
         throw new Error(errorMessage);
       }
 
       const updatedUser: User = await response.json();
       console.log("✅ Perfil atualizado:", updatedUser);
-      
+
       this.setUser(updatedUser);
-      
+
       return updatedUser;
     } catch (error) {
       console.error("💥 Erro ao atualizar perfil:", error);
