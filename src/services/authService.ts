@@ -14,11 +14,6 @@ export interface User {
   avatar?: string;
 }
 
-export interface RegisterResponse {
-  message: string;
-  email: string;
-}
-
 export interface AuthResponse {
   jwt: string;
   user: User;
@@ -131,8 +126,8 @@ class AuthService {
     };
   }
 
-  // Registro com confirmação por email
-  async register(data: RegisterData): Promise<{ message: string; email: string }> {
+  // Registro com login automático
+  async register(data: RegisterData): Promise<AuthResponse> {
     try {
       // Validações básicas
       if (!data.email || !data.password || !data.username) {
@@ -148,15 +143,10 @@ class AuthService {
         throw new Error("Email inválido");
       }
 
-      // No Strapi 5, não enviamos confirmationUrl no body
-      // A URL de confirmação deve ser configurada no Strapi Admin Panel
-      // Mas vamos adicionar headers para garantir que o Strapi use a URL correta
       const response = await fetch(`${this.baseURL}/api/auth/local/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Origin": process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin,
-          "Referer": process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin,
         },
         body: JSON.stringify(data),
       });
@@ -196,91 +186,16 @@ class AuthService {
         throw new Error(errorMessage);
       }
 
-      // Com confirmação por email, o Strapi não retorna JWT imediatamente
-      // O usuário precisa confirmar o email primeiro antes de fazer login
-      console.log('✅ Registro iniciado - Email de confirmação enviado');
-      return {
-        message: "Foi enviado um email de confirmação para você. Para continuar com o seu cadastro, primeiro confirme no email que foi enviado para você. Só depois disso você conseguirá acesso à sua conta.",
-        email: data.email
-      };
-    } catch (error) {
-      console.error("❌ Erro no registro:", error);
-      throw error;
-    }
-  }
-
-  // Confirmar email após registro
-  async confirmEmail(confirmationToken: string): Promise<AuthResponse> {
-    try {
-      const response = await fetch(`${process.env.NEXTAUTH_URL}/api/auth/email-confirmation?confirmation=${confirmationToken}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        
-        // Tratamento específico de erros de confirmação
-        let errorMessage = "Erro na confirmação do email";
-        
-        if (errorData.error?.message) {
-          const strapiError = errorData.error.message.toLowerCase();
-          
-          if (strapiError.includes("expired") || strapiError.includes("invalid")) {
-            errorMessage = "O link de confirmação expirou ou é inválido. Solicite um novo email de confirmação.";
-          } else if (strapiError.includes("already confirmed")) {
-            errorMessage = "Este email já foi confirmado anteriormente. Você pode fazer login normalmente.";
-          } else {
-            errorMessage = errorData.error.message;
-          }
-        }
-        
-        throw new Error(errorMessage);
-      }
-
       const authData: AuthResponse = await response.json();
       
-      // Salvar token e usuário no localStorage após confirmação
+      // Salvar token e usuário no localStorage
       this.setToken(authData.jwt);
       this.setUser(authData.user);
 
-      console.log('✅ Email confirmado com sucesso');
+      console.log('✅ Registro realizado com sucesso');
       return authData;
     } catch (error) {
-      console.error("❌ Erro na confirmação do email:", error);
-      throw error;
-    }
-  }
-
-  // Reenviar email de confirmação
-  async resendConfirmation(email: string): Promise<{ message: string }> {
-    try {
-      const response = await fetch(`${this.baseURL}/api/auth/send-email-confirmation`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Origin": process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin,
-          "Referer": process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin,
-        },
-        body: JSON.stringify({
-          email
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = errorData.error?.message || "Erro ao reenviar email de confirmação";
-        throw new Error(errorMessage);
-      }
-
-      console.log('✅ Email de confirmação reenviado');
-      return {
-        message: "Email de confirmação reenviado com sucesso!"
-      };
-    } catch (error) {
-      console.error("❌ Erro ao reenviar confirmação:", error);
+      console.error("❌ Erro no registro:", error);
       throw error;
     }
   }
