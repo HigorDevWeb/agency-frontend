@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import authConfig from "@/config/auth";
 
 /** Estrutura de erro amigável para UI */
@@ -212,58 +213,117 @@ export default function GoogleRedirectPage() {
   // Se houver erro, mostrar mensagem bonita com CTAs
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-center max-w-md p-8">
-          <div className="text-yellow-400 text-6xl mb-4">⚠️</div>
-          <h1 className="text-white text-2xl font-bold mb-3">{error.title}</h1>
-          <p className="text-gray-300 mb-6">{error.message}</p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            {error.ctas?.map((cta, i) => {
-              const base = "px-6 py-3 rounded-lg font-medium transition-colors w-full sm:w-auto";
-              if (cta.type === "primary") {
-                return (
-                  <button
-                    key={i}
-                    onClick={cta.onClick}
-                    className={`${base} bg-blue-600 hover:bg-blue-700 text-white`}
-                  >
-                    {cta.label}
-                  </button>
-                );
-              }
-              if (cta.type === "secondary") {
-                return (
-                  <button
-                    key={i}
-                    onClick={cta.onClick}
-                    className={`${base} bg-gray-800 hover:bg-gray-700 text-white/90`}
-                  >
-                    {cta.label}
-                  </button>
-                );
-              }
-              return (
-                <button
-                  key={i}
-                  onClick={cta.onClick}
-                  className="text-blue-400 hover:text-blue-300 underline underline-offset-4"
-                >
-                  {cta.label}
-                </button>
-              );
-            })}
-
-            {!error.ctas && (
-              <button
-                onClick={() => router.push("/")}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors w-full sm:w-auto"
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gray-900/50 backdrop-blur-sm rounded-3xl border border-gray-700/50 p-8 w-full max-w-md relative overflow-hidden shadow-2xl"
+        >
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-orange-500/10 rounded-3xl" />
+          
+          <div className="relative text-center">
+            {/* Icon */}
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring" }}
+              className="w-16 h-16 mx-auto mb-6 bg-red-500/20 rounded-full flex items-center justify-center"
+            >
+              <svg 
+                className="w-8 h-8 text-red-400" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
               >
-                Voltar ao Início
-              </button>
-            )}
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" 
+                />
+              </svg>
+            </motion.div>
+
+            {/* Title */}
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-white text-xl font-semibold mb-3"
+            >
+              {error.title}
+            </motion.h1>
+
+            {/* Message */}
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-gray-300 text-sm leading-relaxed mb-8"
+            >
+              {error.message}
+            </motion.p>
+
+            {/* Actions */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="space-y-3"
+            >
+              {error.ctas?.map((cta, i) => {
+                if (cta.type === "primary") {
+                  return (
+                    <motion.button
+                      key={i}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={cta.onClick}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
+                    >
+                      {cta.label}
+                    </motion.button>
+                  );
+                }
+                if (cta.type === "secondary") {
+                  return (
+                    <motion.button
+                      key={i}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={cta.onClick}
+                      className="w-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white py-3 px-6 rounded-xl font-medium transition-all duration-200 border border-gray-600/50"
+                    >
+                      {cta.label}
+                    </motion.button>
+                  );
+                }
+                return (
+                  <motion.button
+                    key={i}
+                    whileHover={{ scale: 1.02 }}
+                    onClick={cta.onClick}
+                    className="block w-full text-blue-400 hover:text-blue-300 text-sm underline underline-offset-4 transition-colors duration-200 py-2"
+                  >
+                    {cta.label}
+                  </motion.button>
+                );
+              })}
+
+              {!error.ctas && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => router.push("/")}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-blue-500/25"
+                >
+                  Voltar ao Início
+                </motion.button>
+              )}
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </div>
     );
   }
