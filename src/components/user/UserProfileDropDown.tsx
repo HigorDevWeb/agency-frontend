@@ -3,12 +3,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 export default function UserProfileDropdown() {
   const { user, logout } = useAuth();
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -28,23 +26,32 @@ export default function UserProfileDropdown() {
 
   if (!user) return null;
 
-  const menuItems = [
-    { 
-      icon: "👤", 
-      label: "Meu Perfil", 
-      action: () => {
-        router.push("/profile");
-        setIsOpen(false);
-      }
-    },
-    {
-      icon: "💼",
-      label: "Minhas Candidaturas",
-      action: () => {
-        router.push("/applications");
-        setIsOpen(false);
-      }
-    }
+  // Tipo para os itens do menu
+  type MenuItem = {
+    icon: string;
+    label: string;
+    action: () => void;
+  };
+
+  const menuItems: MenuItem[] = [
+    // Temporariamente desativado - Meu Perfil
+    // { 
+    //   icon: "👤", 
+    //   label: "Meu Perfil", 
+    //   action: () => {
+    //     // router.push("/profile");
+    //     setIsOpen(false);
+    //   }
+    // },
+    // Temporariamente desativado - Minhas Candidaturas
+    // {
+    //   icon: "💼",
+    //   label: "Minhas Candidaturas",
+    //   action: () => {
+    //     // router.push("/applications");
+    //     setIsOpen(false);
+    //   }
+    // }
   ];
 
   return (
