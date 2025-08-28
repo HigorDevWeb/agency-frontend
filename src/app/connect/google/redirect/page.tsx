@@ -87,7 +87,7 @@ export default function GoogleRedirectPage() {
         // Redirecionar (usa ?next=/alguma-rota se presente; senão, /dashboard)
         const target = nextParam && nextParam.startsWith("/")
           ? nextParam
-          : "/dashboard";
+          : "/";
         router.push(target);
       } catch (error) {
         console.error("💥 Erro no callback do Google:", error);
