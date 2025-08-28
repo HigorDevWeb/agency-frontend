@@ -52,7 +52,167 @@ class AuthService {
   private tokenKey = "auth_token";
   private userKey = "auth_user";
 
-  // Métodos para gerenciar token no localStorage
+  // Método para mapear erros do Strapi para mensagens amigáveis
+  private mapStrapiError(errorData: unknown): string {
+    // Verificar se é um objeto com as propriedades esperadas
+    if (typeof errorData === 'object' && errorData !== null) {
+      const error = errorData as Record<string, unknown>;
+      
+      // Se já temos uma mensagem de erro específica
+      if (error.error && typeof error.error === 'object' && error.error !== null) {
+        const errorObj = error.error as Record<string, unknown>;
+        if (typeof errorObj.message === 'string') {
+          const strapiError = errorObj.message.toLowerCase();
+
+          // Erros de registro/cadastro
+          if (strapiError.includes("email") && strapiError.includes("taken")) {
+            return "Este e-mail já está sendo usado. Você já tem uma conta? Tente fazer login ou use outro e-mail.";
+          }
+          
+          if (strapiError.includes("username") && strapiError.includes("taken")) {
+            return "Este nome de usuário já está sendo usado. Escolha outro nome.";
+          }
+          
+          if (strapiError.includes("password") && strapiError.includes("short")) {
+            return "A senha deve ter pelo menos 6 caracteres.";
+          }
+          
+          if (strapiError.includes("email") && (strapiError.includes("valid") || strapiError.includes("format"))) {
+            return "Por favor, digite um e-mail válido.";
+          }
+          
+          // Erros de login
+          if (strapiError.includes("invalid") || strapiError.includes("wrong") || strapiError.includes("incorrect")) {
+            return "E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.";
+          }
+          
+          if (strapiError.includes("blocked")) {
+            return "Sua conta foi bloqueada. Entre em contato com o suporte para mais informações.";
+          }
+          
+          if (strapiError.includes("confirmed") || strapiError.includes("confirm")) {
+            return "Você precisa confirmar seu e-mail antes de fazer login. Verifique sua caixa de entrada e clique no link de confirmação.";
+          }
+          
+          // Erros de campos obrigatórios
+          if (strapiError.includes("username") && strapiError.includes("required")) {
+            return "O nome é obrigatório.";
+          }
+          
+          if (strapiError.includes("email") && strapiError.includes("required")) {
+            return "O e-mail é obrigatório.";
+          }
+          
+          if (strapiError.includes("password") && strapiError.includes("required")) {
+            return "A senha é obrigatória.";
+          }
+          
+          // Erros de rate limiting
+          if (strapiError.includes("rate") || strapiError.includes("limit")) {
+            return "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.";
+          }
+          
+          // Retornar a mensagem original se não conseguirmos mapear
+          return errorObj.message;
+        }
+      }
+      
+      // Formato antigo do Strapi (v3/v4)
+      if (Array.isArray(error.message) && error.message.length > 0) {
+        const firstMessage = error.message[0];
+        if (typeof firstMessage === 'object' && firstMessage !== null) {
+          const messageObj = firstMessage as Record<string, unknown>;
+          if (Array.isArray(messageObj.messages) && messageObj.messages.length > 0) {
+            const firstNestedMessage = messageObj.messages[0];
+            if (typeof firstNestedMessage === 'object' && firstNestedMessage !== null) {
+              const nestedObj = firstNestedMessage as Record<string, unknown>;
+              if (typeof nestedObj.message === 'string') {
+                return nestedObj.message;
+              }
+            }
+          }
+        }
+      }
+      
+      // Se o erro tem detalhes mais específicos
+      if (error.details && typeof error.details === 'object' && error.details !== null) {
+        const details = error.details as Record<string, unknown>;
+        if (Array.isArray(details.errors) && details.errors.length > 0) {
+          const firstError = details.errors[0];
+          if (typeof firstError === 'object' && firstError !== null) {
+            const errorObj = firstError as Record<string, unknown>;
+            if (typeof errorObj.message === 'string') {
+              return errorObj.message;
+            }
+          }
+        }
+      }
+    }
+    
+    return "Ocorreu um erro inesperado. Tente novamente.";
+  }
+
+  // Método para validar dados antes de enviar
+  private validateRegisterData(data: RegisterData): string | null {
+    if (!data.username?.trim()) {
+      return "O nome é obrigatório.";
+    }
+    
+    if (data.username.length < 2) {
+      return "O nome deve ter pelo menos 2 caracteres.";
+    }
+    
+    if (!data.email?.trim()) {
+      return "O e-mail é obrigatório.";
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      return "Por favor, digite um e-mail válido.";
+    }
+    
+    if (!data.password) {
+      return "A senha é obrigatória.";
+    }
+    
+    if (data.password.length < 6) {
+      return "A senha deve ter pelo menos 6 caracteres.";
+    }
+    
+    if (data.password.length > 100) {
+      return "A senha deve ter no máximo 100 caracteres.";
+    }
+    
+    // Verificar se a senha tem pelo menos uma letra e um número (opcional, mas recomendado)
+    const hasLetter = /[a-zA-Z]/.test(data.password);
+    const hasNumber = /\d/.test(data.password);
+    
+    if (!hasLetter || !hasNumber) {
+      return "A senha deve conter pelo menos uma letra e um número.";
+    }
+    
+    return null;
+  }
+
+  private validateLoginData(data: LoginData): string | null {
+    if (!data.identifier?.trim()) {
+      return "O e-mail é obrigatório.";
+    }
+    
+    if (!data.password) {
+      return "A senha é obrigatória.";
+    }
+    
+    // Validar formato de e-mail se não for username
+    if (data.identifier.includes("@")) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(data.identifier)) {
+        return "Por favor, digite um e-mail válido.";
+      }
+    }
+    
+    return null;
+  }
   setToken(token: string): void {
     if (typeof window !== "undefined") {
       localStorage.setItem(this.tokenKey, token);
@@ -129,19 +289,13 @@ class AuthService {
   // Registro com login automático
   async register(data: RegisterData): Promise<AuthResponse> {
     try {
-      // Validações básicas
-      if (!data.email || !data.password || !data.username) {
-        throw new Error("Todos os campos são obrigatórios");
+      // Validações no frontend primeiro
+      const validationError = this.validateRegisterData(data);
+      if (validationError) {
+        throw new Error(validationError);
       }
 
-      if (data.password.length < 6) {
-        throw new Error("A senha deve ter pelo menos 6 caracteres");
-      }
-
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(data.email)) {
-        throw new Error("Email inválido");
-      }
+      console.log('🚀 Iniciando registro para:', data.email);
 
       const response = await fetch(`${this.baseURL}/api/auth/local/register`, {
         method: "POST",
@@ -151,51 +305,147 @@ class AuthService {
         body: JSON.stringify(data),
       });
 
+      console.log('📥 Status da resposta do registro:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json();
-
-        // Tratamento específico de erros do Strapi
-        let errorMessage = "Erro ao criar conta";
-
-        if (errorData.error?.message) {
-          const strapiError = errorData.error.message.toLowerCase();
-
-          // Erros específicos de validação
-          if (strapiError.includes("email") && strapiError.includes("taken")) {
-            errorMessage = "Este email já está sendo usado. Tente fazer login ou use outro email.";
-          } else if (strapiError.includes("username") && strapiError.includes("taken")) {
-            errorMessage = "Este nome de usuário já está sendo usado. Escolha outro nome.";
-          } else if (strapiError.includes("password") && strapiError.includes("short")) {
-            errorMessage = "A senha deve ter pelo menos 6 caracteres.";
-          } else if (strapiError.includes("email") && strapiError.includes("valid")) {
-            errorMessage = "Por favor, digite um email válido.";
-          } else if (strapiError.includes("username") && strapiError.includes("required")) {
-            errorMessage = "O nome é obrigatório.";
-          } else if (strapiError.includes("email") && strapiError.includes("required")) {
-            errorMessage = "O email é obrigatório.";
-          } else if (strapiError.includes("password") && strapiError.includes("required")) {
-            errorMessage = "A senha é obrigatória.";
-          } else {
-            // Usar a mensagem original do Strapi se não conseguirmos mapear
-            errorMessage = errorData.error.message;
-          }
-        } else if (errorData.message?.[0]?.messages?.[0]?.message) {
-          errorMessage = errorData.message[0].messages[0].message;
-        }
-
+        console.error('❌ Erro do servidor:', errorData);
+        
+        const errorMessage = this.mapStrapiError(errorData);
         throw new Error(errorMessage);
       }
 
       const authData: AuthResponse = await response.json();
+      console.log('✅ Resposta do registro:', { 
+        hasJwt: !!authData.jwt, 
+        userConfirmed: authData.user?.confirmed,
+        userId: authData.user?.id 
+      });
 
-      // Salvar token e usuário no localStorage
-      this.setToken(authData.jwt);
-      this.setUser(authData.user);
+      // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+      // ALTERAÇÃO: não salvar token/usuário se a confirmação por e-mail estiver ativa
+      // e o usuário ainda não estiver confirmado (confirmed === false) ou se não vier jwt.
+      if (authData?.user?.confirmed && authData?.jwt) {
+        // Conta já confirmada (ex.: ambientes sem email confirmation) -> login normal
+        this.setToken(authData.jwt);
+        this.setUser(authData.user);
+        console.log('✅ Registro confirmado e login realizado com sucesso');
+      } else {
+        // Conta criada, porém aguardando confirmação por e-mail
+        console.log('📧 Registro criado. Verifique seu e-mail para confirmar a conta antes de fazer login.');
+        // Importante: NÃO salvar token nem usuário aqui
+      }
+      // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-      console.log('✅ Registro realizado com sucesso');
       return authData;
     } catch (error) {
       console.error("❌ Erro no registro:", error);
+      
+      // Se for erro de rede
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error("Erro de conexão. Verifique sua internet e tente novamente.");
+      }
+      
+      throw error;
+    }
+  }
+
+  // Confirmar email (novo método)
+  async confirmEmail(confirmationToken: string): Promise<void> {
+    try {
+      if (!confirmationToken?.trim()) {
+        throw new Error("Token de confirmação não encontrado. Verifique o link em seu e-mail.");
+      }
+
+      console.log('📧 Confirmando e-mail com token...');
+
+      // Tentar primeiro com o endpoint email-confirmation (Strapi v4/v5)
+      let response = await fetch(
+        `${this.baseURL}/api/auth/email-confirmation?confirmation=${confirmationToken}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // Se der 404, tentar com o endpoint alternativo
+      if (response.status === 404) {
+        console.log('� Tentando endpoint alternativo...');
+        response = await fetch(
+          `${this.baseURL}/api/auth/email-confirmation`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ confirmation: confirmationToken }),
+          }
+        );
+      }
+
+      console.log('�📥 Status da confirmação de e-mail:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ Erro na confirmação:', errorData);
+        
+        // Erros específicos de confirmação
+        if (response.status === 400) {
+          throw new Error("Link de confirmação inválido ou expirado. Solicite um novo e-mail de confirmação.");
+        }
+        
+        if (response.status === 404) {
+          throw new Error("Endpoint de confirmação não encontrado. Verifique a configuração do servidor.");
+        }
+        
+        const errorMessage = this.mapStrapiError(errorData);
+        throw new Error(errorMessage);
+      }
+
+      // Opcional: fazer login automático após a confirmação
+      const authData: AuthResponse = await response.json();
+      if (authData.jwt && authData.user) {
+        this.setToken(authData.jwt);
+        this.setUser(authData.user);
+        console.log("✅ E-mail confirmado e login realizado com sucesso!");
+      } else {
+        console.log("✅ E-mail confirmado com sucesso! Agora você pode fazer login.");
+      }
+    } catch (error) {
+      console.error("❌ Erro na confirmação de e-mail:", error);
+      
+      // Se for erro de rede
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error("Erro de conexão. Verifique sua internet e tente novamente.");
+      }
+      
+      throw error;
+    }
+  }
+
+  // Reenviar email de confirmação
+  async resendEmailConfirmation(email: string): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseURL}/api/auth/send-email-confirmation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error?.message || "Erro ao reenviar e-mail de confirmação."
+        );
+      }
+
+      console.log("✅ E-mail de confirmação reenviado com sucesso!");
+    } catch (error) {
+      console.error("❌ Erro ao reenviar e-mail de confirmação:", error);
       throw error;
     }
   }
@@ -203,10 +453,13 @@ class AuthService {
   // Login tradicional (email/senha)
   async login(data: LoginData): Promise<AuthResponse> {
     try {
-      // Validações básicas
-      if (!data.identifier || !data.password) {
-        throw new Error("Email e senha são obrigatórios");
+      // Validações no frontend primeiro
+      const validationError = this.validateLoginData(data);
+      if (validationError) {
+        throw new Error(validationError);
       }
+
+      console.log('🔐 Tentando fazer login para:', data.identifier);
 
       const response = await fetch(`${this.baseURL}/api/auth/local`, {
         method: "POST",
@@ -216,36 +469,31 @@ class AuthService {
         body: JSON.stringify(data),
       });
 
+      console.log('📥 Status da resposta do login:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json();
-
-        // Tratamento específico de erros de login
-        let errorMessage = "Erro ao fazer login";
-
-        if (errorData.error?.message) {
-          const strapiError = errorData.error.message.toLowerCase();
-
-          if (strapiError.includes("invalid") || strapiError.includes("wrong")) {
-            errorMessage = "Email ou senha incorretos. Verifique suas credenciais e tente novamente.";
-          } else if (strapiError.includes("blocked")) {
-            errorMessage = "Sua conta foi bloqueada. Entre em contato com o suporte.";
-          } else if (strapiError.includes("confirmed") || strapiError.includes("confirm")) {
-            errorMessage = "Você precisa confirmar seu email antes de fazer login. Verifique sua caixa de entrada.";
-          } else {
-            errorMessage = errorData.error.message;
-          }
-        } else if (errorData.message?.[0]?.messages?.[0]?.message) {
-          errorMessage = errorData.message[0].messages[0].message;
-        }
-
+        console.error('❌ Erro do servidor no login:', errorData);
+        
+        const errorMessage = this.mapStrapiError(errorData);
         throw new Error(errorMessage);
       }
 
       const authData: AuthResponse = await response.json();
+      console.log('✅ Resposta do login:', { 
+        hasJwt: !!authData.jwt, 
+        userConfirmed: authData.user?.confirmed,
+        userId: authData.user?.id 
+      });
 
       // Verificar se o usuário confirmou o email
       if (!authData.user.confirmed) {
-        throw new Error("Você precisa confirmar seu email antes de fazer login. Verifique sua caixa de entrada e clique no link de confirmação.");
+        throw new Error("Você precisa confirmar seu e-mail antes de fazer login. Verifique sua caixa de entrada e clique no link de confirmação.");
+      }
+
+      // Verificar se o usuário não está bloqueado
+      if (authData.user.blocked) {
+        throw new Error("Sua conta foi bloqueada. Entre em contato com o suporte para mais informações.");
       }
 
       // Salvar token e usuário no localStorage apenas se confirmado
@@ -256,56 +504,29 @@ class AuthService {
       return authData;
     } catch (error) {
       console.error("❌ Erro no login:", error);
+      
+      // Se for erro de rede
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error("Erro de conexão. Verifique sua internet e tente novamente.");
+      }
+      
       throw error;
     }
   }
 
   // Login com Google (redirecionamento)
-  loginWithGoogle(redirectPath: string = "/connect/google/redirect"): void {
-    // URL do FRONTEND para receber o retorno do Strapi
-    const origin =
-      typeof window !== "undefined" && window.location?.origin
-        ? window.location.origin
-        : "";
+  loginWithGoogle(): void {
+    // URL para onde o usuário será redirecionado após o login com Google (seu frontend)
+    const redirectUrl = `${window.location.origin}/connect/google/redirect`;
 
-    const redirectUrl = `${origin}${redirectPath}`;
-
-    // Endpoint do STRAPI que inicia o login social
+    // Construir URL de autenticação do Strapi (sem locale conforme solicitado)
     const authUrl = `${this.baseURL}/api/connect/google?redirect=${encodeURIComponent(redirectUrl)}`;
 
-    console.log("🔗 Redirecionando para Google OAuth:", authUrl);
-    console.log("🎯 URL de callback configurada:", redirectUrl);
+    console.log('🔗 Redirecionando para Google OAuth:', authUrl);
+    console.log('🎯 URL de callback configurada:', redirectUrl);
 
-    if (typeof window !== "undefined") {
-      window.location.href = authUrl;
-    }
-  }
-
-  /**
-   * Troca o access_token retornado na rota de redirect pelo JWT do Strapi.
-   * Use este método na sua página /connect/google/redirect, se preferir centralizar a lógica aqui.
-   */
-  async exchangeGoogleAccessToken(accessToken: string): Promise<AuthResponse> {
-    const url = `${this.baseURL}/api/auth/google/callback?access_token=${encodeURIComponent(accessToken)}`;
-
-    const res = await fetch(url, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Erro ao obter JWT do Strapi (${res.status}): ${text}`);
-    }
-
-    const data: AuthResponse = await res.json();
-
-    // Persistir auth localmente (em produção, prefira cookie httpOnly via rota API)
-    this.setToken(data.jwt);
-    this.setUser(data.user);
-
-    return data;
+    // Redirecionar para o endpoint de autenticação do Strapi
+    window.location.href = authUrl;
   }
 
   // Processar callback do Google - REMOVIDO (não é mais necessário)
@@ -314,6 +535,18 @@ class AuthService {
   // Esqueci minha senha (enviar email de recuperação)
   async forgotPassword(data: ForgotPasswordData): Promise<{ ok: boolean }> {
     try {
+      // Validação básica
+      if (!data.email?.trim()) {
+        throw new Error("O e-mail é obrigatório.");
+      }
+      
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(data.email)) {
+        throw new Error("Por favor, digite um e-mail válido.");
+      }
+
+      console.log('📧 Solicitando recuperação de senha para:', data.email);
+
       const response = await fetch(`${this.baseURL}/api/auth/forgot-password`, {
         method: "POST",
         headers: {
@@ -322,14 +555,26 @@ class AuthService {
         body: JSON.stringify(data),
       });
 
+      console.log('📥 Status da resposta de recuperação:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error?.message || "Erro ao enviar email de recuperação");
+        console.error('❌ Erro na recuperação de senha:', errorData);
+        
+        const errorMessage = this.mapStrapiError(errorData);
+        throw new Error(errorMessage);
       }
 
+      console.log('✅ E-mail de recuperação enviado com sucesso');
       return { ok: true };
     } catch (error) {
-      console.error("Erro ao enviar email de recuperação:", error);
+      console.error("❌ Erro ao enviar email de recuperação:", error);
+      
+      // Se for erro de rede
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error("Erro de conexão. Verifique sua internet e tente novamente.");
+      }
+      
       throw error;
     }
   }

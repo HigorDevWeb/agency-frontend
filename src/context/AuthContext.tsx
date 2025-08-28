@@ -131,9 +131,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const authResponse = await authService.register(registerData);
       
-      // Fazer login automático após registro
-      const localUser = convertStrapiUser(authResponse.user);
-      setUser(localUser);
+      // Verificar se o usuário já está confirmado (ambiente sem confirmação de email)
+      if (authResponse?.user?.confirmed && authResponse?.jwt) {
+        // Login automático para usuários já confirmados
+        const localUser = convertStrapiUser(authResponse.user);
+        setUser(localUser);
+      }
+      // Se não estiver confirmado, não fazer login automático
+      // O usuário precisará confirmar o email primeiro
     } catch (error) {
       throw new Error("Erro ao criar conta", { cause: error });
     } finally {
