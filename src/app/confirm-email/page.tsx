@@ -1,99 +1,139 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import authService from "@/services/authService";
-import Link from "next/link";
+import authConfig from "@/config/auth";
+
+type Status = "idle" | "loading" | "success" | "error";
 
 function ConfirmEmailContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  // Aceitar tanto 'confirmation' quanto 'code' como parâmetros
-  const confirmationToken = searchParams.get("confirmation") || searchParams.get("code");
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const [status, setStatus] = useState<Status>("idle");
+    const [message, setMessage] = useState<string>("");
 
-  const [status, setStatus] = useState<
-    "loading" | "success" | "error" | "idle"
-  >("idle");
-  const [message, setMessage] = useState("");
+    const code = searchParams.get("code");
 
-  useEffect(() => {
-    if (confirmationToken) {
-      setStatus("loading");
-      setMessage("Confirmando seu e-mail, por favor aguarde...");
-
-      const confirm = async () => {
-        try {
-          await authService.confirmEmail(confirmationToken);
-          setStatus("success");
-          setMessage(
-            "E-mail confirmado com sucesso! Sua conta foi ativada e você já está logado. Você será redirecionado para o painel em breve."
-          );
-
-          setTimeout(() => {
-            router.push("/dashboard");
-          }, 3000);
-        } catch (error: unknown) {
-          setStatus("error");
-          if (error instanceof Error) {
-            setMessage(
-              error.message ||
-                "Ocorreu um erro ao confirmar seu e-mail. O link pode ser inválido ou ter expirado."
-            );
-          } else {
-            setMessage(
-              "Ocorreu um erro desconhecido ao confirmar seu e-mail."
-            );
-          }
+    const confirm = useCallback(async () => {
+        if (!code) {
+            setStatus("error");
+            setMessage("Código de confirmação ausente.");
+            return;
         }
-      };
 
-      confirm();
-    } else {
-      setStatus("error");
-      setMessage("Token de confirmação não encontrado. Verifique o link em seu e-mail.");
-    }
-  }, [confirmationToken, router]);
+        try {
+            setStatus("loading");
+            setMessage("");
 
-  const getStatusColor = () => {
-    switch (status) {
-      case "success":
-        return "text-green-500";
-      case "error":
-        return "text-red-500";
-      default:
-        return "text-gray-300";
-    }
-  };
+            // ✅ IMPORTANTE: não envie headers customizados (ex.: Content-Type)
+            // para evitar preflight/OPTIONS e bloquear por CORS.
+            const res = await fetch(
+                `${authConfig.apiUrl}/api/auth/email-confirmation?confirmation=${encodeURIComponent(
+                    code
+                )}`,
+                {
+                    method: "GET",
+                    // não usar headers aqui
+                    credentials: "omit",
+                    cache: "no-store",
+                }
+            );
 
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
-      <div className="p-8 bg-gray-800 rounded-lg shadow-xl max-w-md text-center">
-        <h1 className="text-2xl font-bold mb-4">Confirmação de E-mail</h1>
-        {status === "loading" && (
-          <div className="flex justify-center items-center my-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        )}
-        <p className={`text-lg ${getStatusColor()}`}>{message}</p>
-        {(status === "success" || status === "error") && (
-          <div className="mt-6">
-            <Link
-              href={status === "success" ? "/dashboard" : "/login"}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-md font-semibold transition-colors"
-            >
-              {status === "success" ? "Ir para o Painel" : "Tentar Novamente"}
-            </Link>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+            if (!res.ok) {
+                // O Strapi retorna 400 quando o token é inválido/expirado/consumido
+                const text = await res.text().catch(() => "");
+                setStatus("error");
+                setMessage(
+                    res.status === 400
+                        ? "Link inválido ou já utilizado. Solicite um novo e-mail de confirmação."
+                        : `Falha ao confirmar e-mail (HTTP ${res.status}). ${text || ""}`.trim()
+                );
+                return;
+            }
+
+            // A confirmação deu certo
+            setStatus("success");
+            setMessage("E-mail confirmado com sucesso!");
+
+            // Redireciona para a tela de login com um flag
+            const target = "/login?confirmed=true";
+            // pequeno delay só para o usuário ver o estado de sucesso
+            setTimeout(() => router.replace(target), 800);
+        } catch (error) {
+            console.error('Erro na confirmação de e-mail:', error);
+            setStatus("error");
+            setMessage("Erro de conexão. Verifique sua internet e tente novamente.");
+        }
+    }, [code, router]);
+
+    useEffect(() => {
+        confirm();
+    }, [confirm]);
+
+    const isLoading = status === "loading";
+    const isError = status === "error";
+    const isSuccess = status === "success";
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-900">
+            <div className="w-full max-w-md rounded-2xl bg-gray-800 p-8 shadow-xl text-center">
+                <h1 className="text-white text-2xl font-bold mb-4">Confirmação de E-mail</h1>
+
+                {isLoading && (
+                    <>
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4" />
+                        <p className="text-gray-300">Confirmando seu e-mail...</p>
+                    </>
+                )}
+
+                {isSuccess && (
+                    <>
+                        <div className="text-4xl mb-3">✅</div>
+                        <p className="text-green-400">{message}</p>
+                        <p className="text-gray-400 mt-2">Redirecionando...</p>
+                    </>
+                )}
+
+                {isError && (
+                    <>
+                        <div className="text-4xl mb-3">⚠️</div>
+                        <p className="text-red-400">{message}</p>
+                        <button
+                            onClick={confirm}
+                            disabled={isLoading}
+                            className="mt-6 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2.5 font-medium text-white hover:bg-blue-700 transition-colors disabled:opacity-60"
+                        >
+                            Tentar Novamente
+                        </button>
+                        <button
+                            onClick={() => router.push("/login")}
+                            className="mt-3 inline-flex items-center justify-center rounded-lg bg-gray-700 px-5 py-2.5 font-medium text-white hover:bg-gray-600 transition-colors"
+                        >
+                            Ir para o Login
+                        </button>
+                    </>
+                )}
+
+                {status === "idle" && (
+                    <p className="text-gray-300">Preparando confirmação...</p>
+                )}
+            </div>
+        </div>
+    );
 }
 
 export default function ConfirmEmailPage() {
-  return (
-    <Suspense fallback={<div>Carregando...</div>}>
-      <ConfirmEmailContent />
-    </Suspense>
-  );
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gray-900">
+                <div className="w-full max-w-md rounded-2xl bg-gray-800 p-8 shadow-xl text-center">
+                    <h1 className="text-white text-2xl font-bold mb-4">Confirmação de E-mail</h1>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4" />
+                    <p className="text-gray-300">Carregando...</p>
+                </div>
+            </div>
+        }>
+            <ConfirmEmailContent />
+        </Suspense>
+    );
 }
