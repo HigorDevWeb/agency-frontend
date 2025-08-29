@@ -60,7 +60,11 @@ export default function UserProfileDropdown() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-800/50 transition-colors"
+        className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-800/50 transition-colors active:bg-gray-800/70 touch-manipulation"
+        style={{ 
+          WebkitTapHighlightColor: 'transparent',
+          touchAction: 'manipulation'
+        }}
       >
         <motion.div animate={{ rotate: isOpen ? 180 : 0 }} className="relative">
           <Image
@@ -105,7 +109,7 @@ export default function UserProfileDropdown() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-0 mt-2 w-64 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50"
+            className="absolute right-0 mt-2 w-56 md:w-64 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-[9999]"
           >
             {/* Profile Header */}
             <div className="p-4 bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-b border-gray-700">

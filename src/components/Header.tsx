@@ -85,7 +85,7 @@ function HeaderContent() {
   )?.label;
 
   const profileButtonText = headerData?.profileButtonText;
-  const logoutButtonText = headerData?.logoutButtonText;
+  const logoutButtonText = headerData?.logoutButtonText || (language === 'pt' ? 'Sair' : 'Logout');
 
   // Render a skeleton header while data is loading to prevent UI from disappearing
   if (!headerData) {
