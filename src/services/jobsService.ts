@@ -152,54 +152,93 @@ export const filterJobs = async (filterType: string, locale?: string): Promise<F
   const data = await getJobListingPage(currentLocale);
   const jobs = data?.frontCardJob ?? [];
 
-  if (filterType.toLowerCase() === "all") return jobs;
+  // Log para debug
+  console.log(`🔍 Filtrando por: "${filterType}" no locale: "${currentLocale}"`);
+  console.log(`📊 Total de vagas antes do filtro: ${jobs.length}`);
+  
+  if (filterType.toLowerCase() === "all" || filterType.toLowerCase() === "todos") {
+    console.log(`✅ Retornando todas as vagas: ${jobs.length}`);
+    return jobs;
+  }
 
-  return jobs.filter((job) => {
+  const filteredJobs = jobs.filter((job) => {
     const normalizedJobType = normalizeText(job.jobType);
     const normalizedLabelType = normalizeText(job.labelType);
     const normalizedJobTitle = normalizeText(job.jobTitle);
 
-    switch (filterType.toLowerCase()) {
-      case "remote":
-        // Procura por "remote", "remoto", "remota", "flexibilidade", "home office", etc.
-        return (
-          normalizedJobType.includes("remote") ||
-          normalizedJobType.includes("remoto") ||
-          normalizedJobType.includes("remota") ||
-          normalizedJobType.includes("flexibilidade") ||
-          normalizedJobType.includes("home office") ||
-          normalizedJobType.includes("homeoffice")
-        );
-      case "senior":
-        // Procura por "senior" ou "sênior" (com e sem acento)
-        return (
-          normalizedLabelType === "senior" ||
-          normalizedLabelType === "senioró" ||
-          normalizeText("sênior") === normalizedLabelType
-        );
-      case "pleno":
-        // Procura por "pleno", "mid-level", "middle", etc.
-        return (
-          normalizedLabelType === "pleno" ||
-          normalizedLabelType === "mid-level" ||
-          normalizedLabelType === "middle"
-        );
-      case "junior":
-        // Procura por "junior" ou "júnior" (com e sem acento)
-        return (
-          normalizedLabelType === "junior" ||
-          normalizedLabelType === "junioró" ||
-          normalizeText("júnior") === normalizedLabelType
-        );
-      case "fullstack":
-        // Procura por variações de "fullstack"
-        return (
-          normalizedJobTitle.includes("fullstack") ||
-          normalizedJobTitle.includes("full stack") ||
-          normalizedJobTitle.includes("full-stack")
-        );
-      default:
-        return true;
+    // Log para debug de cada vaga
+    const shouldInclude = (() => {
+      switch (filterType.toLowerCase()) {
+        case "remote":
+        case "remoto":
+          // Procura por "remote", "remoto", "remota", "flexibilidade", "home office", etc.
+          return (
+            normalizedJobType.includes("remote") ||
+            normalizedJobType.includes("remoto") ||
+            normalizedJobType.includes("remota") ||
+            normalizedJobType.includes("flexibilidade") ||
+            normalizedJobType.includes("home office") ||
+            normalizedJobType.includes("homeoffice")
+          );
+        
+        case "senior":
+        case "sênior":
+          // Procura exatamente por "senior" ou "sênior"
+          return (
+            normalizedLabelType === "senior" ||
+            normalizedLabelType === normalizeText("sênior")
+          );
+        
+        case "pleno":
+        case "mid-level":
+        case "middle":
+          // Procura exatamente por "pleno", "mid-level", "middle"
+          return (
+            normalizedLabelType === "pleno" ||
+            normalizedLabelType === "mid-level" ||
+            normalizedLabelType === "middle" ||
+            normalizedLabelType === normalizeText("pleno")
+          );
+        
+        case "junior":
+        case "júnior":
+          // Procura exatamente por "junior" ou "júnior"
+          return (
+            normalizedLabelType === "junior" ||
+            normalizedLabelType === normalizeText("júnior")
+          );
+        
+        case "fullstack":
+        case "full-stack":
+        case "full stack":
+          // Procura por variações de "fullstack" no título
+          return (
+            normalizedJobTitle.includes("fullstack") ||
+            normalizedJobTitle.includes("full stack") ||
+            normalizedJobTitle.includes("full-stack")
+          );
+        
+        default:
+          return false;
+      }
+    })();
+
+    // Log detalhado para debug
+    if (shouldInclude) {
+      console.log(`✅ Incluindo vaga: "${job.jobTitle}" (labelType: "${job.labelType}", jobType: "${job.jobType}")`);
     }
+
+    return shouldInclude;
   });
+
+  console.log(`📊 Total de vagas após filtro "${filterType}": ${filteredJobs.length}`);
+  
+  // Log das vagas que foram filtradas
+  if (filteredJobs.length === 0) {
+    console.log(`⚠️ Nenhuma vaga encontrada para o filtro "${filterType}"`);
+    console.log(`📋 Tipos de label disponíveis nas vagas:`, jobs.map(job => `"${job.labelType}"`));
+    console.log(`📋 Tipos de job disponíveis nas vagas:`, jobs.map(job => `"${job.jobType}"`));
+  }
+  
+  return filteredJobs;
 };
