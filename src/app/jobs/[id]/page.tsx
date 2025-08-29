@@ -41,14 +41,14 @@ export default function JobDetailPage() {
         setLoading(false);
         return;
       }
-      
+
       try {
         setLoading(true);
         setError(null);
         // Passa o locale atual para buscar a vaga com o ID correto nesse idioma
         const data = await getInsideJobById(Number(params.id), language);
         const page = await getJobListingPage(language);
-        
+
         if (!data || !page) {
           setError(pageTexts.jobNotFound);
         } else {
@@ -62,7 +62,7 @@ export default function JobDetailPage() {
         setLoading(false);
       }
     }
-    
+
     fetchJob();
   }, [params.id, language, pageTexts.idNotProvided, pageTexts.jobNotFound, pageTexts.errorLoading]);
 
@@ -86,6 +86,31 @@ export default function JobDetailPage() {
 
   const handleSwitchAuthMode = () => {
     setAuthModalType(authModalType === "login" ? "register" : "login");
+  };
+
+  // 🔙 Fallback seguro para o botão de voltar
+  const safeBack = () => {
+    if (typeof window === "undefined") return;
+    
+    // Verifica se o usuário veio de uma página do mesmo site
+    const referrer = document.referrer;
+    const currentDomain = window.location.origin;
+    const cameFromSameSite = referrer && referrer.startsWith(currentDomain);
+    
+    if (cameFromSameSite && window.history.length > 1) {
+      // Se veio do mesmo site e há histórico, tenta voltar
+      router.back();
+      
+      // Timeout de segurança: se não conseguir voltar em 100ms, vai para /jobs
+      setTimeout(() => {
+        if (window.location.pathname === `/jobs/${params.id}`) {
+          router.push("/jobs");
+        }
+      }, 100);
+    } else {
+      // Se veio de link direto ou site externo, vai para /jobs
+      router.push("/jobs");
+    }
   };
 
   // Loading state
@@ -128,7 +153,7 @@ export default function JobDetailPage() {
         <motion.button
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          onClick={() => router.back()}
+          onClick={safeBack}
           className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-8"
         >
           <ArrowLeft size={20} />
@@ -168,13 +193,12 @@ export default function JobDetailPage() {
             <div className="flex flex-col gap-4">
               {job.LevelLabel && (
                 <div
-                  className={`px-4 py-2 rounded-full text-sm font-medium text-center ${
-                    job.LevelLabel === "Sênior" || job.LevelLabel === "Senior"
+                  className={`px-4 py-2 rounded-full text-sm font-medium text-center ${job.LevelLabel === "Sênior" || job.LevelLabel === "Senior"
                       ? "bg-red-500/20 text-red-400"
                       : job.LevelLabel === "Pleno" || job.LevelLabel === "Mid-level"
                         ? "bg-yellow-500/20 text-yellow-400"
                         : "bg-green-500/20 text-green-400"
-                  }`}
+                    }`}
                 >
                   {job.LevelLabel}
                 </div>
@@ -269,7 +293,7 @@ export default function JobDetailPage() {
             }}
           />
         )}
-        
+
         <AuthModal
           isOpen={showAuthModal}
           onClose={handleCloseAuth}
@@ -277,6 +301,6 @@ export default function JobDetailPage() {
           onSwitchMode={handleSwitchAuthMode}
         />
       </div>
-  </div>
+    </div>
   );
 }

@@ -31,6 +31,31 @@ export default function AllJobsPage() {
   // Estado para os filtros vindos da Strapi
   const [availableFilters, setAvailableFilters] = useState<Array<{id: number; label: string; value: string}>>([]);
 
+  // 🔙 Fallback seguro para o botão de voltar
+  const safeBack = () => {
+    if (typeof window === "undefined") return;
+    
+    // Verifica se o usuário veio de uma página do mesmo site
+    const referrer = document.referrer;
+    const currentDomain = window.location.origin;
+    const cameFromSameSite = referrer && referrer.startsWith(currentDomain);
+    
+    if (cameFromSameSite && window.history.length > 1) {
+      // Se veio do mesmo site e há histórico, tenta voltar
+      router.back();
+      
+      // Timeout de segurança: se não conseguir voltar em 100ms, vai para home
+      setTimeout(() => {
+        if (window.location.pathname === '/jobs') {
+          router.push("/");
+        }
+      }, 100);
+    } else {
+      // Se veio de link direto ou site externo, vai para a página principal
+      router.push("/");
+    }
+  };
+
   // Buscar textos da página e configurações quando o idioma mudar
   useEffect(() => {
     let isMounted = true;
@@ -108,7 +133,7 @@ export default function AllJobsPage() {
         <motion.button
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          onClick={() => router.back()}
+          onClick={safeBack}
           className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-8"
         >
           <ArrowLeft size={20} />
