@@ -18,13 +18,14 @@ export default function AllJobsPage() {
   const router = useRouter();
   const { language } = useLanguage();
   
-  // Estado para os textos traduzidos
+  // Estado para os textos traduzidos vindos da Strapi
   const [pageTexts, setPageTexts] = useState({
     backButton: "Voltar",
-    pageTitle: "Todas as Vagas",
+    pageTitle: "Todas as Vagas", 
     pageSubtitle: "Encontre a oportunidade perfeita para você",
     noJobsFound: "Nenhuma vaga encontrada",
-    tryAdjustFilters: "Tente ajustar os filtros para encontrar mais oportunidades"
+    tryAdjustFilters: "Tente ajustar os filtros para encontrar mais oportunidades",
+    seeAllJobsButton: "Ver todas as vagas"
   });
 
   // Estado para os filtros vindos da Strapi
@@ -38,13 +39,14 @@ export default function AllJobsPage() {
       try {
         const jobsPageData = await getJobListingPage(language);
         if (isMounted && jobsPageData) {
-          // Atualizar textos da página
+          // Atualizar textos da página com dados da Strapi
           setPageTexts({
             backButton: jobsPageData.labelVoltar || "Voltar",
             pageTitle: jobsPageData.featured_title || "Todas as Vagas",
             pageSubtitle: jobsPageData.featured_subtitle || "Encontre a oportunidade perfeita para você",
-            noJobsFound: "Nenhuma vaga encontrada",
-            tryAdjustFilters: "Tente ajustar os filtros para encontrar mais oportunidades"
+            noJobsFound: "Nenhuma vaga encontrada", // TODO: adicionar na Strapi se necessário
+            tryAdjustFilters: "Tente ajustar os filtros para encontrar mais oportunidades", // TODO: adicionar na Strapi se necessário
+            seeAllJobsButton: jobsPageData.seeAllJobsButton || "Ver todas as vagas"
           });
 
           // Mapear os filtros da Strapi para valores de filtro utilizáveis
@@ -174,17 +176,20 @@ export default function AllJobsPage() {
                   <h3 className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">
                     {job.jobTitle}
                   </h3>
-                  <p className="text-gray-400">{job.companyLabel}</p>
+                  {job.companyLabel && (
+                    <p className="text-gray-400">{job.companyLabel}</p>
+                  )}
                 </div>
                 <motion.div
                   whileHover={{ rotate: 360 }}
                   transition={{ duration: 0.5 }}
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${job.labelType === "Senior"
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    job.labelType === "Sênior" || job.labelType === "Senior"
                       ? "bg-red-500/20 text-red-400"
-                      : job.labelType === "Pleno"
+                      : job.labelType === "Pleno" || job.labelType === "Mid-level"
                         ? "bg-yellow-500/20 text-yellow-400"
                         : "bg-green-500/20 text-green-400"
-                    }`}
+                  }`}
                 >
                   {job.labelType}
                 </motion.div>
@@ -210,20 +215,21 @@ export default function AllJobsPage() {
               <div className="flex flex-wrap gap-2 mb-4">
                 {job.labelStack &&
                   job.labelStack
-                    .split(" ")
+                    .split(/\s+/) // Divide por espaços múltiplos
+                    .filter(tech => tech.length > 0) // Remove strings vazias
                     .slice(0, 3)
-                    .map((tech) => (
+                    .map((tech, index) => (
                       <motion.span
-                        key={tech}
+                        key={`${tech}-${index}`}
                         whileHover={{ scale: 1.1 }}
                         className="px-3 py-1 bg-blue-600/20 text-blue-400 rounded-full text-sm font-medium"
                       >
                         {tech}
                       </motion.span>
                     ))}
-                {job.labelStack && job.labelStack.split(" ").length > 3 && (
+                {job.labelStack && job.labelStack.split(/\s+/).filter(tech => tech.length > 0).length > 3 && (
                   <span className="px-3 py-1 bg-gray-600/20 text-gray-400 rounded-full text-sm font-medium">
-                    +{job.labelStack.split(" ").length - 3}
+                    +{job.labelStack.split(/\s+/).filter(tech => tech.length > 0).length - 3}
                   </span>
                 )}
               </div>

@@ -154,9 +154,9 @@ export default function JobDetailPage() {
                 {/* Você pode separar info, exibir salário, tipo, etc, conforme estrutura do campo */}
               </div>
               <div className="flex flex-wrap gap-2 mb-6">
-                {job.jobStack?.split(" ").map((tech) => (
+                {job.jobStack?.split(/\s+/).filter(tech => tech.length > 0).map((tech, index) => (
                   <span
-                    key={tech}
+                    key={`${tech}-${index}`}
                     className="px-3 py-1 bg-blue-600/20 text-blue-400 rounded-full text-sm font-medium"
                   >
                     {tech}
@@ -166,16 +166,19 @@ export default function JobDetailPage() {
             </div>
 
             <div className="flex flex-col gap-4">
-              <div
-                className={`px-4 py-2 rounded-full text-sm font-medium text-center ${job.LevelLabel === "Senior"
-                    ? "bg-red-500/20 text-red-400"
-                    : job.LevelLabel === "Pleno"
-                      ? "bg-yellow-500/20 text-yellow-400"
-                      : "bg-green-500/20 text-green-400"
+              {job.LevelLabel && (
+                <div
+                  className={`px-4 py-2 rounded-full text-sm font-medium text-center ${
+                    job.LevelLabel === "Sênior" || job.LevelLabel === "Senior"
+                      ? "bg-red-500/20 text-red-400"
+                      : job.LevelLabel === "Pleno" || job.LevelLabel === "Mid-level"
+                        ? "bg-yellow-500/20 text-yellow-400"
+                        : "bg-green-500/20 text-green-400"
                   }`}
-              >
-                {job.LevelLabel}
-              </div>
+                >
+                  {job.LevelLabel}
+                </div>
+              )}
 
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -196,6 +199,18 @@ export default function JobDetailPage() {
               <p className="text-gray-300 leading-relaxed">{job.JobDescription}</p>
             </div>
           </div>
+
+          {/* Seção "Sobre a Empresa" - só aparece se tiver conteúdo */}
+          {job.AboutCompany && job.labelAboutCompany && (
+            <div className="mb-8">
+              <div>
+                <h3 className="text-2xl font-bold mb-4 text-cyan-400">
+                  {job.labelAboutCompany}
+                </h3>
+                <p className="text-gray-300 leading-relaxed">{job.AboutCompany}</p>
+              </div>
+            </div>
+          )}
 
           <div className="mt-8 grid gap-8 md:grid-cols-2">
             <div>
@@ -220,19 +235,25 @@ export default function JobDetailPage() {
               <h3 className="text-2xl font-bold mb-4 text-purple-400">
                 {job.labelBenefits}
               </h3>
-              <ul className="space-y-2">
-                {(job.jobbenefits?.split("\n").filter((line) => !!line) ?? []).map(
-                  (benefit, index) => (
-                    <li
-                      key={index}
-                      className="flex items-start gap-2 text-gray-300"
-                    >
-                      <span className="text-purple-400 mt-1">•</span>
-                      {benefit.replace(/^•\s?/, "")}
-                    </li>
-                  )
-                )}
-              </ul>
+              {job.jobbenefits ? (
+                <ul className="space-y-2">
+                  {job.jobbenefits.split("\n").filter((line) => !!line).map(
+                    (benefit, index) => (
+                      <li
+                        key={index}
+                        className="flex items-start gap-2 text-gray-300"
+                      >
+                        <span className="text-purple-400 mt-1">•</span>
+                        {benefit.replace(/^•\s?/, "")}
+                      </li>
+                    )
+                  )}
+                </ul>
+              ) : (
+                <p className="text-gray-400 italic">
+                  Informações sobre benefícios não disponíveis
+                </p>
+              )}
             </div>
           </div>
         </motion.div>

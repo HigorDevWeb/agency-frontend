@@ -9,7 +9,7 @@ export interface FrontCardJob {
     id: number;
     jobTitle: string;
     labelType: string;
-    companyLabel: string;
+    companyLabel: string | null;
     jobType: string;
     jobSalary: string;
     jobHours: string;
@@ -21,15 +21,17 @@ export interface FrontCardJob {
 export interface InsideCardJob {
     id: number;
     JobTitle: string;
-    companyTitle: string;
+    companyTitle: string | null;
     jobInfo: string;
     jobStack: string;
-    LevelLabel: string;
+    LevelLabel: string | null;
     applyButton: string;
     JobDescription: string;
+    AboutCompany: string | null;
     jobRequirements: string;
-    jobbenefits: string;
+    jobbenefits: string | null;
     labelDescription: string;
+    labelAboutCompany: string | null;
     labelRequirements: string;
     labelBenefits: string;
 }
