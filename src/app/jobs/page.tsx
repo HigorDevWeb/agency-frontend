@@ -27,7 +27,8 @@ export default function AllJobsPage() {
     tryAdjustFilters: "Tente ajustar os filtros para encontrar mais oportunidades"
   });
 
-  const filters = ["all", "remote", "senior", "pleno", "junior", "fullstack"];
+  // Estado para os filtros vindos da Strapi
+  const [availableFilters, setAvailableFilters] = useState<Array<{id: number; label: string; value: string}>>([]);
 
   // Buscar textos da página e configurações quando o idioma mudar
   useEffect(() => {
@@ -39,12 +40,41 @@ export default function AllJobsPage() {
         if (isMounted && jobsPageData) {
           // Atualizar textos da página
           setPageTexts({
-            backButton: "Voltar", // Valor padrão caso não haja tradução
+            backButton: jobsPageData.labelVoltar || "Voltar",
             pageTitle: jobsPageData.featured_title || "Todas as Vagas",
             pageSubtitle: jobsPageData.featured_subtitle || "Encontre a oportunidade perfeita para você",
             noJobsFound: "Nenhuma vaga encontrada",
             tryAdjustFilters: "Tente ajustar os filtros para encontrar mais oportunidades"
           });
+
+          // Mapear os filtros da Strapi para valores de filtro utilizáveis
+          const mappedFilters = jobsPageData.filters.map(filter => {
+            const labelLower = filter.label.toLowerCase();
+            let filterValue = labelLower;
+            
+            // Mapear os labels para valores que o filterJobs entende
+            if (labelLower === 'todos' || labelLower === 'all') {
+              filterValue = 'all';
+            } else if (labelLower === 'sênior' || labelLower === 'senior') {
+              filterValue = 'senior';
+            } else if (labelLower === 'júnior' || labelLower === 'junior') {
+              filterValue = 'junior';
+            } else if (labelLower === 'fullstack' || labelLower === 'full stack' || labelLower === 'full-stack') {
+              filterValue = 'fullstack';
+            } else if (labelLower === 'remoto' || labelLower === 'remote') {
+              filterValue = 'remote';
+            } else if (labelLower === 'pleno') {
+              filterValue = 'pleno';
+            }
+            
+            return {
+              id: filter.id,
+              label: filter.label,
+              value: filterValue
+            };
+          });
+          
+          setAvailableFilters(mappedFilters);
         }
       } catch (error) {
         console.error("Erro ao buscar dados da página:", error);
@@ -104,18 +134,18 @@ export default function AllJobsPage() {
           transition={{ delay: 0.3 }}
           className="flex flex-wrap justify-center gap-4 mb-12"
         >
-          {filters.map((filter) => (
+          {availableFilters.map((filter) => (
             <motion.button
-              key={filter}
+              key={filter.id}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setSelectedFilter(filter)}
-              className={`px-6 py-2 rounded-full font-medium transition-all duration-300 ${selectedFilter === filter
+              onClick={() => setSelectedFilter(filter.value)}
+              className={`px-6 py-2 rounded-full font-medium transition-all duration-300 ${selectedFilter === filter.value
                   ? "bg-blue-600 text-white"
                   : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                 }`}
             >
-              {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              {filter.label}
             </motion.button>
           ))}
         </motion.div>

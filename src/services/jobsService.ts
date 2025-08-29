@@ -138,6 +138,14 @@ export const testJobMapping = async (locale?: string): Promise<void> => {
   });
 };
 
+// Função auxiliar para normalizar texto (remove acentos e converte para lowercase)
+const normalizeText = (text: string): string => {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, ''); // Remove acentos
+};
+
 // Filtra jobs do frontCardJob pelo tipo de filtro
 export const filterJobs = async (filterType: string, locale?: string): Promise<FrontCardJob[]> => {
   const currentLocale = locale || getBrowserLocale();
@@ -147,17 +155,49 @@ export const filterJobs = async (filterType: string, locale?: string): Promise<F
   if (filterType.toLowerCase() === "all") return jobs;
 
   return jobs.filter((job) => {
+    const normalizedJobType = normalizeText(job.jobType);
+    const normalizedLabelType = normalizeText(job.labelType);
+    const normalizedJobTitle = normalizeText(job.jobTitle);
+
     switch (filterType.toLowerCase()) {
       case "remote":
-        return job.jobType.toLowerCase().includes("remote");
+        // Procura por "remote", "remoto", "remota", "flexibilidade", "home office", etc.
+        return (
+          normalizedJobType.includes("remote") ||
+          normalizedJobType.includes("remoto") ||
+          normalizedJobType.includes("remota") ||
+          normalizedJobType.includes("flexibilidade") ||
+          normalizedJobType.includes("home office") ||
+          normalizedJobType.includes("homeoffice")
+        );
       case "senior":
-        return job.labelType.toLowerCase() === "senior";
+        // Procura por "senior" ou "sênior" (com e sem acento)
+        return (
+          normalizedLabelType === "senior" ||
+          normalizedLabelType === "senioró" ||
+          normalizeText("sênior") === normalizedLabelType
+        );
       case "pleno":
-        return job.labelType.toLowerCase() === "pleno";
+        // Procura por "pleno", "mid-level", "middle", etc.
+        return (
+          normalizedLabelType === "pleno" ||
+          normalizedLabelType === "mid-level" ||
+          normalizedLabelType === "middle"
+        );
       case "junior":
-        return job.labelType.toLowerCase() === "júnior";
+        // Procura por "junior" ou "júnior" (com e sem acento)
+        return (
+          normalizedLabelType === "junior" ||
+          normalizedLabelType === "junioró" ||
+          normalizeText("júnior") === normalizedLabelType
+        );
       case "fullstack":
-        return job.jobTitle.toLowerCase().includes("full stack");
+        // Procura por variações de "fullstack"
+        return (
+          normalizedJobTitle.includes("fullstack") ||
+          normalizedJobTitle.includes("full stack") ||
+          normalizedJobTitle.includes("full-stack")
+        );
       default:
         return true;
     }
