@@ -225,7 +225,7 @@ export default function JobDetailPage() {
           </div>
 
           {/* Seção "Sobre a Empresa" - só aparece se tiver conteúdo */}
-          {job.AboutCompany && job.labelAboutCompany && (
+          {job.AboutCompany && job.labelAboutCompany && job.AboutCompany.trim() !== "" && job.AboutCompany !== "Informações sobre benefícios não disponíveis" && (
             <div className="mb-8">
               <div>
                 <h3 className="text-2xl font-bold mb-4 text-cyan-400">
@@ -236,7 +236,7 @@ export default function JobDetailPage() {
             </div>
           )}
 
-          <div className="mt-8 grid gap-8 md:grid-cols-2">
+          <div className="mt-8 grid gap-8 md:grid-cols-1">
             <div>
               <h3 className="text-2xl font-bold mb-4 text-green-400">
                 {job.labelRequirements}
@@ -255,11 +255,13 @@ export default function JobDetailPage() {
                 )}
               </ul>
             </div>
-            <div>
-              <h3 className="text-2xl font-bold mb-4 text-purple-400">
-                {job.labelBenefits}
-              </h3>
-              {job.jobbenefits ? (
+            
+            {/* Seção "Benefícios" - só aparece se tiver conteúdo válido */}
+            {job.jobbenefits && job.labelBenefits && job.jobbenefits.trim() !== "" && (
+              <div>
+                <h3 className="text-2xl font-bold mb-4 text-purple-400">
+                  {job.labelBenefits}
+                </h3>
                 <ul className="space-y-2">
                   {job.jobbenefits.split("\n").filter((line) => !!line).map(
                     (benefit, index) => (
@@ -273,12 +275,8 @@ export default function JobDetailPage() {
                     )
                   )}
                 </ul>
-              ) : (
-                <p className="text-gray-400 italic">
-                  Informações sobre benefícios não disponíveis
-                </p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </motion.div>
         {showApplyModal && job && (
