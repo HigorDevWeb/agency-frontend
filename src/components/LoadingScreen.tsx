@@ -72,7 +72,7 @@ export default function LoadingScreen() {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 1.1 }}
           transition={{ duration: 0.8 }}
-          className="fixed inset-0 bg-black z-[10000] flex items-center justify-center"
+          className="fixed inset-0 bg-black z-[9999] flex items-center justify-center will-change-transform"
         >
           <div className="relative max-w-2xl mx-auto px-8">
             <motion.div

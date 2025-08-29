@@ -142,8 +142,8 @@ export default function DashboardAnalytics() {
             initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ delay: index * 0.1, duration: 0.5 }}
-            whileHover={{ scale: 1.05, rotateY: 5 }}
-            className="relative overflow-hidden"
+            whileHover={{ scale: 1.05 }}
+            className="relative overflow-hidden transform-gpu will-change-transform"
           >
             <div
               className={`bg-gradient-to-br ${metric.color} p-6 rounded-2xl text-white`}

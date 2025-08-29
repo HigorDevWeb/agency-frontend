@@ -90,11 +90,11 @@ export default function JobsSection() {
             jobs.map((job, index) => (
               <motion.div
                 key={job.id}
-                initial={{ opacity: 0, y: 50, rotateX: -15 }}
+                initial={{ opacity: 0, y: 50 }}
                 animate={
                   isInView
-                    ? { opacity: 1, y: 0, rotateX: 0 }
-                    : { opacity: 0, y: 50, rotateX: -15 }
+                    ? { opacity: 1, y: 0 }
+                    : { opacity: 0, y: 50 }
                 }
                 transition={{
                   delay: index * 0.2,
@@ -104,12 +104,11 @@ export default function JobsSection() {
                 whileHover={{
                   y: -10,
                   scale: 1.02,
-                  rotateX: 5,
                   transition: { duration: 0.3 },
                 }}
                 // SEMPRE usa o ID correto vindo do backend!
                 onClick={() => router.push(`/jobs/${job.id}`)}
-                className="bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-2xl border border-gray-700 hover:border-blue-500 transition-all duration-300 group cursor-pointer"
+                className="bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-2xl border border-gray-700 hover:border-blue-500 transition-all duration-300 group cursor-pointer transform-gpu will-change-transform"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>

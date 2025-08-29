@@ -66,18 +66,16 @@ export default function TechStack() {
           {techLogos.map((tech, index) => (
             <motion.div
               key={tech.name}
-              initial={{ opacity: 0, scale: 0, rotateY: 180 }}
+              initial={{ opacity: 0, scale: 0 }}
               animate={
                 isInView
                   ? {
                     opacity: 1,
                     scale: 1,
-                    rotateY: 0,
                   }
                   : {
                     opacity: 0,
                     scale: 0,
-                    rotateY: 180,
                   }
               }
               transition={{
@@ -88,10 +86,9 @@ export default function TechStack() {
               }}
               whileHover={{
                 scale: 1.1,
-                rotateY: 360,
                 transition: { duration: 0.6 },
               }}
-              className={`relative p-6 rounded-2xl bg-gradient-to-br ${tech.color} group cursor-pointer`}
+              className={`relative p-6 rounded-2xl bg-gradient-to-br ${tech.color} group cursor-pointer transform-gpu will-change-transform`}
             >
               <motion.div className="text-4xl mb-3" whileHover={{ scale: 1.2 }}>
                 {tech.icon}

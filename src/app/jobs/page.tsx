@@ -12,7 +12,7 @@ import { useLanguage } from "@/context/LanguageContext";
 // Garantir que o filterJobs seja usado corretamente (async)
 export default function AllJobsPage() {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: false });
+  const isInView = useInView(ref, { once: true }); // Mudança: once: true para que a animação aconteça apenas uma vez
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [filteredJobs, setFilteredJobs] = useState<FrontCardJob[]>([]);
   const router = useRouter();
@@ -100,7 +100,7 @@ export default function AllJobsPage() {
 
         <motion.div
           initial={{ opacity: 0 }}
-          animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+          animate={{ opacity: 1 }} // Sempre visível após a animação inicial
           transition={{ delay: 0.3 }}
           className="flex flex-wrap justify-center gap-4 mb-12"
         >
@@ -120,24 +120,12 @@ export default function AllJobsPage() {
           ))}
         </motion.div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 jobs-grid">
           {filteredJobs.map((job, index) => (
             <motion.div
               key={job.id}
-              initial={{ opacity: 0, y: 50, rotateX: -15 }}
-              animate={
-                isInView
-                  ? {
-                    opacity: 1,
-                    y: 0,
-                    rotateX: 0,
-                  }
-                  : {
-                    opacity: 0,
-                    y: 50,
-                    rotateX: -15,
-                  }
-              }
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }} // Sempre visível após a animação inicial
               transition={{
                 delay: index * 0.1,
                 duration: 0.6,
@@ -146,11 +134,10 @@ export default function AllJobsPage() {
               whileHover={{
                 y: -10,
                 scale: 1.02,
-                rotateX: 5,
                 transition: { duration: 0.3 },
               }}
               onClick={() => router.push(`/jobs/${job.id}`)}
-              className="bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-2xl border border-gray-700 hover:border-blue-500 transition-all duration-300 group cursor-pointer"
+              className="bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-2xl border border-gray-700 hover:border-blue-500 transition-all duration-300 group cursor-pointer transform-gpu will-change-transform jobs-card"
             >
               <div className="flex justify-between items-start mb-4">
                 <div>
